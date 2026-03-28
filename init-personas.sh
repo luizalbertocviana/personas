@@ -189,7 +189,7 @@ bd note <id> "What was implemented, files changed, decisions made, shortcuts log
 Close the issue:
 
 ```
-bd update <id> --close --json
+bd update <id> --status closed --json
 ```
 
 Create a refinement issue:
@@ -311,7 +311,7 @@ If this issue is a retest of a previously filed bug, confirm the fix resolves th
 
 ```
 bd note <id> "Test types: <unit/integration/E2E>. Cases covered: <list>. Result: all pass / Bugs filed: <ids>"
-bd update <id> --close --json
+bd update <id> --status closed --json
 ```
 
 ## Step 7 — Commit and stop
@@ -405,7 +405,7 @@ bd create "Review: <finding>" \
 
 ```
 bd note <id> "Improvement: <what was changed and why>. Remaining findings filed: <ids>"
-bd update <id> --close --json
+bd update <id> --status closed --json
 ```
 
 ## Step 7 — Commit and stop
@@ -527,7 +527,7 @@ If blocking issues remain, leave it in `changes/` and note why.
 
 ```
 bd note <id> "Scope reviewed: <change file>. Findings: <count> issues — <ids>. Archived: <yes/no, reason if no>"
-bd update <id> --close --json
+bd update <id> --status closed --json
 ```
 
 ## Step 7 — Commit and stop
@@ -619,7 +619,7 @@ bd create "Fix: missing/incorrect docstring in <file:function>" \
 
 ```
 bd note <id> "Documented: <scope>. Files created/updated: <paths>. Discrepancies filed: <ids if any>"
-bd update <id> --close --json
+bd update <id> --status closed --json
 ```
 
 ## Step 7 — Commit and stop
@@ -670,7 +670,7 @@ Attempt to resolve using only what is available: `specs.md`, `specs/`, the codeb
 
 ```
 bd note <id> "Resolution: <what was decided and why, citing evidence>"
-bd update <id> --close --json
+bd update <id> --status closed --json
 
 bd create "<downstream task title>" \
   --description "Change file: changes/<slug>.md. <what should now be implemented given the resolution>" \
@@ -682,7 +682,7 @@ bd create "<downstream task title>" \
 
 ```
 bd note <id> "Unresolvable autonomously. Human input required."
-bd update <id> --close --json
+bd update <id> --status closed --json
 ```
 
 Output:
