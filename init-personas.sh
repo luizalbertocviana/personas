@@ -161,7 +161,7 @@ If you make a deliberate shortcut (hardcoded value, simplified logic, deferred e
 ```
 bd create "Refine: <what was shortcut>" \
   --description "Change file: changes/<slug>.md. Location: <file:line>. Shortcut: <what and why>. Ideal approach: <description>." \
-  -t task --tag refine -p 3 \
+  -t task --labels refine -p 3 \
   --deps discovered-from:<current-id> --json
 ```
 
@@ -197,7 +197,7 @@ Create a refinement issue:
 ```
 bd create "Refine: <original issue title>" \
   --description "Change file: changes/<slug>.md. Review implementation of <id>. Look for gaps, missing error handling, edge cases, code quality issues." \
-  -t task --tag refine -p 3 \
+  -t task --labels refine -p 3 \
   --deps discovered-from:<id> --json
 ```
 
@@ -206,7 +206,7 @@ Create a test issue:
 ```
 bd create "Test: <original issue title>" \
   --description "Change file: changes/<slug>.md. Verify implementation of <id> against acceptance criteria. Cover integration and E2E paths — unit tests were written by the Developer." \
-  -t task --tag test -p 2 \
+  -t task --labels test -p 2 \
   --deps discovered-from:<id> --json
 ```
 
@@ -215,7 +215,7 @@ If the implemented feature has user-facing behaviour, a public API, or operation
 ```
 bd create "Document: <original issue title>" \
   --description "Change file: changes/<slug>.md. Document the behaviour introduced by <id>. Audience: <user-facing|developer-facing|api-reference|operational>." \
-  -t task --tag docs -p 3 \
+  -t task --labels docs -p 3 \
   --deps discovered-from:<id> --json
 ```
 
@@ -390,7 +390,7 @@ Run the full build and test suite. Nothing must break.
 ```
 bd create "Refine: <specific finding>" \
   --description "Change file: changes/<slug>.md. Location: <file:line>. Finding: <what was observed>. Why it matters: <impact>. Suggested fix: <approach>." \
-  -t task --tag refine -p <priority> \
+  -t task --labels refine -p <priority> \
   --deps discovered-from:<current-id> --json
 ```
 
@@ -399,7 +399,7 @@ For findings requiring a design decision:
 ```
 bd create "Review: <finding>" \
   --description "Change file: changes/<slug>.md. Location: <file:line>. Finding: <what was observed>. Decision needed: <what must be decided>." \
-  -t task --tag review -p <priority> \
+  -t task --labels review -p <priority> \
   --deps discovered-from:<current-id> --json
 ```
 
@@ -489,7 +489,8 @@ Evaluate against this checklist:
 ```
 bd create "<type>: <specific finding>" \
   --description "Change file: changes/<slug>.md. Location: <file:line>. Finding: <observed>. Expected: <required>. Suggested action: <next step>." \
-  -t <bug|task> --tag <refine|test> \
+  -t <bug|task> \
+  --labels <refine|test> \
   -p <priority> \
   --deps discovered-from:<current-id> --json
 ```
@@ -499,7 +500,7 @@ For recurring patterns:
 ```
 bd create "Refine: recurring pattern — <name>" \
   --description "Change file: changes/<slug>.md. Pattern in <N> places: <locations>. Problem: <what>. Proposed standard: <approach>." \
-  -t task --tag refine -p 1 \
+  -t task --labels refine -p 1 \
   --deps discovered-from:<current-id> --json
 ```
 
@@ -614,7 +615,7 @@ For discrepancies:
 ```
 bd create "Fix: missing/incorrect docstring in <file:function>" \
   --description "Change file: changes/<slug>.md (or specs/<slug>.md if archived). Docstring is <missing|incorrect>. Actual behaviour: <what the code does>." \
-  -t task --tag refine -p 3 \
+  -t task --labels refine -p 3 \
   --deps discovered-from:<current-id> --json
 ```
 
@@ -778,7 +779,7 @@ For ambiguities:
 ```
 bd create "Ambiguity: <topic>" \
   --description "Change file: changes/<slug>.md. specs.md section <X> does not specify <Y>. Assumption so far: <Z>. Must be clarified before implementing <area>." \
-  -t task --tag ambiguity -p 1 --json
+  -t task --labels ambiguity -p 1 --json
 ```
 
 For capabilities whose issues are all closed but have no review:
@@ -786,7 +787,7 @@ For capabilities whose issues are all closed but have no review:
 ```
 bd create "Review: <slug>" \
   --description "Change file: changes/<slug>.md. All implementation issues closed. Perform full review before archiving." \
-  -t task --tag review -p 2 --json
+  -t task --labels review -p 2 --json
 ```
 
 **If no gaps exist**, the project is complete:
