@@ -730,13 +730,85 @@ git push
 
 Stop. If you created issues, the next session will pick them up. If you declared done, there is nothing more to do.'
 
+# ─── run-personas.sh ──────────────────────────────────────────────────────────
+
+RUN_SCRIPT="run-personas.sh"
+
+create_file "$RUN_SCRIPT" '#!/usr/bin/env bash
+# run-personas.sh
+# Runs "read instructions.md and follow it" via opencode in a loop.
+# Cycles through all available models; on failure moves to the next model.
+# Wraps around to the first model when all have been tried.
+
+set -euo pipefail
+
+PROMPT="read instructions.md and follow it"
+
+# ─── preflight ────────────────────────────────────────────────────────────────
+
+if ! command -v opencode &>/dev/null; then
+  echo "error: opencode not found in PATH" >&2
+  exit 1
+fi
+
+if [ ! -f "instructions.md" ]; then
+  echo "error: instructions.md not found in current directory" >&2
+  echo "       run init-personas.sh first" >&2
+  exit 1
+fi
+
+# ─── load model list ──────────────────────────────────────────────────────────
+
+echo "Fetching available models..."
+mapfile -t MODELS < <(opencode models 2>/dev/null | grep -v '"'"'^\s*$'"'"')
+
+if [ ${#MODELS[@]} -eq 0 ]; then
+  echo "error: no models returned by '"'"'opencode models'"'"'" >&2
+  echo "       check your provider credentials with '"'"'opencode auth list'"'"'" >&2
+  exit 1
+fi
+
+echo "Found ${#MODELS[@]} models"
+echo ""
+
+# ─── loop ─────────────────────────────────────────────────────────────────────
+
+model_index=0
+
+while true; do
+  model="${MODELS[$model_index]}"
+  echo "[$(date '"'"'+%H:%M:%S'"'"')] trying model: $model"
+
+  if opencode run "$PROMPT" --model "$model"; then
+    # success — stay on this model, immediately run again
+    echo "[$(date '"'"'+%H:%M:%S'"'"')] session complete (model: $model)"
+    echo ""
+  else
+    exit_code=$?
+    echo "[$(date '"'"'+%H:%M:%S'"'"')] model $model failed (exit $exit_code), trying next"
+    echo ""
+
+    # advance to next model, wrap around
+    model_index=$(( (model_index + 1) % ${#MODELS[@]} ))
+
+    # if we have wrapped all the way around, pause before retrying
+    if [ $model_index -eq 0 ]; then
+      echo "All models exhausted. Waiting 30s before cycling again..."
+      sleep 30
+    fi
+  fi
+done'
+
+chmod +x "$RUN_SCRIPT"
+
 # ─── done ─────────────────────────────────────────────────────────────────────
 
 echo ""
 echo "Done. Files created:"
 echo "  $INSTRUCTIONS_FILE"
+echo "  $RUN_SCRIPT"
 for f in "$PERSONAS_DIR"/*.md; do
   echo "  $f"
 done
 echo ""
-echo "Your session prompt: \"read instructions.md and follow it\""
+echo "To start: ./$RUN_SCRIPT"
