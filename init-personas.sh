@@ -227,7 +227,6 @@ If the feature is purely internal, skip the documentation issue.
 git add -A
 git commit -m "<type>(<scope>): <short description>"
 git pull --rebase
-bd sync
 git push
 ```
 
@@ -321,7 +320,6 @@ bd update <id> --close --json
 git add -A
 git commit -m "test: <short description of what was tested>"
 git pull --rebase
-bd sync
 git push
 ```
 
@@ -416,7 +414,6 @@ bd update <id> --close --json
 git add -A
 git commit -m "refine: <short description of improvement>"
 git pull --rebase
-bd sync
 git push
 ```
 
@@ -539,7 +536,6 @@ bd update <id> --close --json
 git add -A
 git commit -m "review: <slug> — <one line summary>"
 git pull --rebase
-bd sync
 git push
 ```
 
@@ -632,7 +628,6 @@ bd update <id> --close --json
 git add -A
 git commit -m "docs: <short description of what was documented>"
 git pull --rebase
-bd sync
 git push
 ```
 
@@ -803,7 +798,6 @@ bd ready is empty. No further sessions needed.
 ### Step 6 — Sync and stop
 
 ```
-bd sync
 git pull --rebase
 git push
 ```
