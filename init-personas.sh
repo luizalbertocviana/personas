@@ -743,11 +743,17 @@ create_file "$RUN_SCRIPT" '#!/usr/bin/env bash
 set -euo pipefail
 
 PROMPT="read instructions.md and follow it"
+TIMEOUT_SECONDS="${OPENCODE_TIMEOUT:-1200}"  # override with env var if needed
 
 # ─── preflight ────────────────────────────────────────────────────────────────
 
 if ! command -v opencode &>/dev/null; then
   echo "error: opencode not found in PATH" >&2
+  exit 1
+fi
+
+if ! command -v timeout &>/dev/null; then
+  echo "error: timeout not found in PATH (install GNU coreutils)" >&2
   exit 1
 fi
 
@@ -779,13 +785,17 @@ while true; do
   model="${MODELS[$model_index]}"
   echo "[$(date '"'"'+%H:%M:%S'"'"')] trying model: $model"
 
-  if opencode run "$PROMPT" --model "$model"; then
+  if timeout "$TIMEOUT_SECONDS" opencode run "$PROMPT" --model "$model"; then
     # success — stay on this model, immediately run again
     echo "[$(date '"'"'+%H:%M:%S'"'"')] session complete (model: $model)"
     echo ""
   else
     exit_code=$?
-    echo "[$(date '"'"'+%H:%M:%S'"'"')] model $model failed (exit $exit_code), trying next"
+    if [ $exit_code -eq 124 ]; then
+      echo "[$(date '"'"'+%H:%M:%S'"'"')] model $model timed out after ${TIMEOUT_SECONDS}s (likely hung on quota/rate limit), trying next"
+    else
+      echo "[$(date '"'"'+%H:%M:%S'"'"')] model $model failed (exit $exit_code), trying next"
+    fi
     echo ""
 
     # advance to next model, wrap around
