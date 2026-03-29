@@ -9,7 +9,7 @@ Personas implements a structured development workflow where different AI agents 
 ## How It Works
 
 1. **Specifications-driven**: Work starts from a `specs.md` file that defines project requirements
-2. **Issue tracking**: Uses `bd` (backlog daemon) to manage issues with types (`feature`, `bug`, `task`) and labels (`test`, `refine`, `review`, `docs`, `ambiguity`)
+2. **Issue tracking**: Uses `beads` (`bd`) to manage issues with types (`feature`, `bug`, `task`) and labels (`test`, `refine`, `review`, `docs`, `ambiguity`)
 3. **Persona selection**: The system automatically selects the appropriate persona based on available work
 4. **Iterative sessions**: Each session handles one issue, following the persona's protocol
 
@@ -118,7 +118,7 @@ When all issues are closed, the Analyst re-evaluates specs.md for gaps. If none 
 
 - **bash** (GNU coreutils for `timeout`)
 - **opencode** CLI tool
-- **bd** (backlog daemon) for issue tracking
+- **beads** (`bd`) for issue tracking
 - **git** for version control
 
 ## File Structure
