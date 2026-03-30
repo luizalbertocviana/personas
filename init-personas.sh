@@ -859,22 +859,48 @@ echo ""
 # ─── loop ─────────────────────────────────────────────────────────────────────
 
 model_index=0
+no_change_streak=0
+MAX_NO_CHANGE=2
 
 while true; do
   model="${MODELS[$model_index]}"
   echo "[$(date '+%H:%M:%S')] trying model: $model"
 
+  commit_before=$(git rev-parse HEAD 2>/dev/null || echo "none")
+  ready_before=$(bd ready --json 2>/dev/null | wc -c)
+
   if timeout "$TIMEOUT_SECONDS" opencode run "$PROMPT" --model "$model"; then
-    echo "[$(date '+%H:%M:%S')] session complete (model: $model)"
-    echo ""
+    commit_after=$(git rev-parse HEAD 2>/dev/null || echo "none")
+    ready_after=$(bd ready --json 2>/dev/null | wc -c)
+
+    if [ "$commit_before" != "$commit_after" ] || [ "$ready_before" != "$ready_after" ]; then
+      echo "[$(date '+%H:%M:%S')] session complete with changes (model: $model)"
+      no_change_streak=0
+    else
+      no_change_streak=$(( no_change_streak + 1 ))
+      echo "[$(date '+%H:%M:%S')] session produced no changes — streak: $no_change_streak/$MAX_NO_CHANGE (model: $model)"
+
+      if [ $no_change_streak -ge $MAX_NO_CHANGE ]; then
+        echo "[$(date '+%H:%M:%S')] $MAX_NO_CHANGE consecutive no-change runs on $model, advancing to next model"
+        no_change_streak=0
+        model_index=$(( (model_index + 1) % ${#MODELS[@]} ))
+
+        if [ $model_index -eq 0 ]; then
+          echo "All models cycled. Waiting 30s before retrying..."
+          sleep 30
+        fi
+      fi
+    fi
+
   else
     exit_code=$?
     if [ $exit_code -eq 124 ]; then
-      echo "[$(date '+%H:%M:%S')] model $model timed out after ${TIMEOUT_SECONDS}s (likely hung on quota/rate limit), trying next"
+      echo "[$(date '+%H:%M:%S')] model $model timed out after ${TIMEOUT_SECONDS}s, trying next"
     else
       echo "[$(date '+%H:%M:%S')] model $model failed (exit $exit_code), trying next"
     fi
     echo ""
+    no_change_streak=0
 
     model_index=$(( (model_index + 1) % ${#MODELS[@]} ))
 
