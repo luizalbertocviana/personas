@@ -814,7 +814,7 @@ write_file "$RUN_SCRIPT" << '__PERSONA_EOF_XK7Q__'
 set -euo pipefail
 
 PROMPT="read instructions.md and follow it"
-TIMEOUT_SECONDS="${OPENCODE_TIMEOUT:-300}"  # override with env var if needed
+TIMEOUT_SECONDS="${OPENCODE_TIMEOUT:-1200}"  # override with env var if needed
 
 # ─── preflight ────────────────────────────────────────────────────────────────
 
