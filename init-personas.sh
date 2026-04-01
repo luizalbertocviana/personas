@@ -65,8 +65,6 @@ Scan the tags of all ready issues. Select exactly one persona using the first tr
 6. `.personas/documentation.md` — when ready issues include a `task` tagged `docs`
 7. `.personas/developer.md` — when ready issues include a `feature`, `bug`, or untagged `task`
 
-Read only the `# TRIGGER` section of each persona file (first block only) to confirm your selection.
-
 ## 5. Load context for the selected issue
 
 Within the selected persona's trigger type, pick the first matching ready issue. Then:
@@ -223,11 +221,23 @@ If the feature is purely internal, skip the documentation issue.
 
 ## Step 7 — Commit and stop
 
+Before committing, store any project facts discovered this session that would
+save future sessions time. Be specific and concrete. Examples:
+
+  bd remember "build: run 'make test' from project root, not pytest directly"
+  bd remember "convention: controllers live in src/api/, not src/handlers/"
+  bd remember "quirk: migrations must be run manually after model changes — no auto-migrate"
+
+If a previously stored memory was found to be wrong, correct it:
+  bd forget <key>
+  bd remember "<corrected version>"
+
+Do not store facts already captured in the change file or issue notes.
+Do not store opinions or assessments — only facts a future agent can act on.
+
 ```
 git add -A
 git commit -m "<type>(<scope>): <short description>"
-git pull --rebase
-git push
 ```
 
 Stop. Do not start another issue in this session.
@@ -316,11 +326,19 @@ bd update <id> --status closed --json
 
 ## Step 7 — Commit and stop
 
+Before committing, store any testing facts discovered this session. Examples:
+
+  bd remember "fragile: auth token tests are order-dependent, always run suite in full"
+  bd remember "test-infra: fixtures in tests/conftest.py, do not duplicate in test files"
+  bd remember "edge-case pattern: empty string inputs consistently unhandled across API layer"
+
+Correct stale memories if encountered:
+  bd forget <key>
+  bd remember "<corrected version>"
+
 ```
 git add -A
 git commit -m "test: <short description of what was tested>"
-git pull --rebase
-git push
 ```
 
 Stop. Do not start another issue in this session.
@@ -410,11 +428,19 @@ bd update <id> --status closed --json
 
 ## Step 7 — Commit and stop
 
+Before committing, store any debt patterns discovered this session. Examples:
+
+  bd remember "debt pattern: error handling in db/ layer is consistently missing rollback"
+  bd remember "hotspot: src/billing.py has been touched in 4 of the last 5 refine sessions"
+  bd remember "convention drift: new modules are not following the repository pattern from specs"
+
+Correct stale memories if encountered:
+  bd forget <key>
+  bd remember "<corrected version>"
+
 ```
 git add -A
 git commit -m "refine: <short description of improvement>"
-git pull --rebase
-git push
 ```
 
 Stop. Do not start another issue in this session.
@@ -532,11 +558,19 @@ bd update <id> --status closed --json
 
 ## Step 7 — Commit and stop
 
+Before syncing, store any structural observations discovered this session. Examples:
+
+  bd remember "architecture: auth and billing are tightly coupled — changes to one break the other"
+  bd remember "consistency gap: new capabilities are not following error response format in specs/auth.md"
+  bd remember "review pattern: recurring missing input validation across all HTTP endpoints"
+
+Correct stale memories if encountered:
+  bd forget <key>
+  bd remember "<corrected version>"
+
 ```
 git add -A
 git commit -m "review: <slug> — <one line summary>"
-git pull --rebase
-git push
 ```
 
 Stop. Do not start another issue in this session.
@@ -624,11 +658,19 @@ bd update <id> --status closed --json
 
 ## Step 7 — Commit and stop
 
+Before committing, store any documentation facts discovered this session. Examples:
+
+  bd remember "doc debt: src/queue.py public interface has never been documented"
+  bd remember "volatile: the reporting module API changes frequently — doc it last"
+  bd remember "audience note: users of this project are ops engineers, not developers"
+
+Correct stale memories if encountered:
+  bd forget <key>
+  bd remember "<corrected version>"
+
 ```
 git add -A
 git commit -m "docs: <short description of what was documented>"
-git pull --rebase
-git push
 ```
 
 Stop. Do not start another issue in this session.
@@ -797,10 +839,15 @@ bd ready is empty. No further sessions needed.
 
 ### Step 6 — Sync and stop
 
-```
-git pull --rebase
-git push
-```
+Store any specification facts discovered this session. Examples:
+
+  bd remember "spec pattern: auth-related requirements consistently underspecify error cases"
+  bd remember "ambiguity hotspot: specs.md section 3 has generated 4 ambiguity issues so far"
+  bd remember "scope note: performance requirements in specs.md are aspirational, not enforced"
+
+Correct stale memories if encountered:
+  bd forget <key>
+  bd remember "<corrected version>"
 
 Stop. If you created issues, the next session will pick them up.
 __PERSONA_EOF_XK7Q__
