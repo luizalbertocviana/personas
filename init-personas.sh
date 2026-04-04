@@ -849,6 +849,13 @@ Correct stale memories if encountered:
   bd forget <key>
   bd remember "<corrected version>"
 
+Commit any new change files:
+
+```
+git add -A
+git commit -m "<type>(<scope>): <short description>"
+```
+
 Stop. If you created issues, the next session will pick them up.
 __PERSONA_EOF_XK7Q__
 write_file "$RUN_SCRIPT" << '__PERSONA_EOF_XK7Q__'
