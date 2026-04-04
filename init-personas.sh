@@ -529,7 +529,9 @@ bd create "Refine: recurring pattern — <name>" \
 
 ## Step 5 — Archive the change file
 
-If the review found no blocking issues, or all blocking issues have been filed and the capability is otherwise sound, archive the change file.
+If the review found no issues, or all issues have been filed and the capability is otherwise sound, archive the change file.
+If you have written any findings in Step 4, you should not archive the change file.
+Only archive the change file if your review has found no issues.
 
 Fill in the `## As built` section of `changes/<slug>.md`:
 
