@@ -59,11 +59,11 @@ Scan the tags of all ready issues. Select exactly one persona using the first tr
 
 1. `.personas/analyst.md` — when `bd ready` is empty
 2. `.personas/analyst.md` — when ready issues include a `task` tagged `ambiguity`
-3. `.personas/tester.md` — when ready issues include a `task` tagged `test`
-4. `.personas/refiner.md` — when ready issues include a `task` tagged `refine`
-5. `.personas/reviewer.md` — when ready issues include a `task` tagged `review`
-6. `.personas/documentation.md` — when ready issues include a `task` tagged `docs`
-7. `.personas/developer.md` — when ready issues include a `feature`, `bug`, or untagged `task`
+3. `.personas/reviewer.md` — when ready issues include a `task` tagged `review`
+4. `.personas/tester.md` — when ready issues include a `task` tagged `test`
+5. `.personas/developer.md` — when ready issues include a `feature`, `bug`, or untagged `task`
+6. `.personas/refiner.md` — when ready issues include a `task` tagged `refine`
+7. `.personas/documentation.md` — when ready issues include a `task` tagged `docs`
 
 ## 5. Load context for the selected issue
 
