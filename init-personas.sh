@@ -51,6 +51,36 @@ git log --oneline -5
 
 If `git status` shows uncommitted changes, commit or stash them before proceeding.
 
+### Stale claim check
+
+```
+bd list --status in-progress --json
+```
+
+For each issue returned, check the last commit referencing its ID:
+
+```
+git log --oneline --all --grep="<id>"
+```
+
+If the most recent matching commit is more than 24 hours old, unclaim it so it re-enters the ready queue:
+
+```
+bd update <id> --status open --assignee ""
+```
+
+Do not unclaim an issue that has an open, uncommitted working tree change referencing it — that indicates an interrupted session that needs human review. In that case, leave it claimed and output:
+
+```
+HUMAN INPUT NEEDED
+
+Stale claim: <id> has been in-progress for 24+ hours with no new commit, but
+uncommitted changes exist that reference it. A previous session may have been
+interrupted mid-implementation. Review before proceeding.
+```
+
+Once stale claims are resolved, continue to Step 3.
+
 ## 3. Check project state
 
 ```
@@ -851,7 +881,11 @@ Evaluate against this checklist:
 
 After the standard checklist, apply the following specialist lenses. Each is scoped — only apply it when the change file's scope includes the relevant area. These are not separate passes; they are named question sets to run through once you have already read the code.
 
-**Performance lens** — apply when scope touches backend data access or frontend rendering:
+**Performance lens** — apply when scope touches backend data access or frontend rendering.
+
+This lens requires a different reading posture — apply it as a pre-read framing step, not a post-read checklist. Before reading any code in the affected area, note the data access or rendering patterns you expect to see based on the change file scope. After reading, compare what exists against those expectations. Gaps between expectation and reality are your findings.
+
+Questions to hold while reading:
 
 - N+1 queries: are ORM associations traversed in loops without eager loading? Are database queries made inside iteration blocks that could be batched?
 - Missing indexes: do new `WHERE` or `ORDER BY` clauses reference columns without indexes? Are new foreign key columns missing indexes?
@@ -1733,6 +1767,17 @@ All four fields are required. A hypothesis missing `Location` or `Mechanism` is 
 Then verify it. Trace the actual data flow through the stated location and confirm that the mechanism produces the observed symptom. Verification requires source evidence, not reasoning about what the code "should" do.
 
 **If the hypothesis is wrong:** discard it entirely. Do not patch it. Return to Step 3 and form a new hypothesis from the evidence.
+
+**Unverifiable hypothesis:** If a hypothesis cannot be verified from source alone — the code path requires runtime state, specific data, or an environment not available to you — do not count it as a failed hypothesis and do not consume a strike. File the ambiguity issue immediately and stop:
+
+```
+bd create "Ambiguity: root cause of <original bug title> not verifiable from source" \
+  --description "Change file: changes/<slug>.md (if referenced). Original bug: <id>. Hypothesis: <Location and Mechanism>. Why it cannot be verified from source: <runtime state / reproduction environment / additional context needed>." \
+  -t task --labels ambiguity -p 1 \
+  --deps discovered-from:<id> --json
+```
+
+Write a note on the original issue summarising the hypothesis and what is needed to verify it, close it with `STATUS: NEEDS_CONTEXT`, and stop.
 
 **3-strike rule:** If three distinct hypotheses each fail verification, stop investigating. The root cause likely requires runtime observation or information not available in the source alone. File an ambiguity issue:
 
