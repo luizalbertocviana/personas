@@ -335,6 +335,14 @@ Common rationalizations for skipping this order:
 
 Before writing tests, read the existing test files to understand conventions and available fixtures. Unit tests are your responsibility — do not defer them to the Tester, who covers integration and E2E paths.
 
+**File organization — keep this in mind throughout implementation:**
+
+Each file you create or significantly modify should have one clear responsibility with a well-defined interface. You reason best about code you can hold in context at once, and your edits are more reliable when files are focused.
+
+- Follow existing project conventions for file placement.
+- If a file you are creating is growing beyond the scope of the current issue (for example, it is acquiring responsibilities that belong in a separate module), stop. Do not split files unilaterally — file a linked `refine` issue describing what should be extracted and why, then continue with the current scope.
+- If an existing file you are modifying is already large or tangled, work carefully within it and note the structural debt as a `DONE_WITH_CONCERNS` signal in your session note and as a linked `refine` issue.
+
 If during implementation you encounter a part of the requirement you cannot complete without a genuine blocker, log it immediately:
 
 ```
@@ -588,6 +596,18 @@ If the parent issue is of type `bug`, this is a retest. Do not rely solely on th
 
 If the parent issue is of type `feature` or `task`, this check does not apply — proceed to Step 6.
 
+**Evidence-over-claims gate — run this sequence before closing any test issue:**
+
+Before making any completion claim, run this gate in order:
+
+1. **IDENTIFY**: What command proves the claim?
+2. **RUN**: Execute it now, fresh and complete.
+3. **READ**: Full output, check exit code, count failures.
+4. **VERIFY**: Does output confirm the claim? If no — state actual status with evidence. If yes — proceed.
+5. **CLAIM**: Only then state the result.
+
+Skipping any step is the same as not verifying.
+
 **Evidence-over-claims checklist — complete before closing any test issue:**
 
 - [ ] You actually ran the test suite — you did not infer it would pass.
@@ -691,8 +711,9 @@ Read the actual implementation. Evaluate findings in priority order:
 1. **Correctness gaps** — change file says X, code does not do X
 2. **Missing error handling** — what happens when inputs are invalid or operations fail?
 3. **Edge cases** — boundary values, empty inputs, concurrent access, resource limits
-4. **Clarity** — will the next person understand this without reading the issue history?
-5. **Simplicity** — is there unnecessary complexity not justified by requirements?
+4. **Structural complexity** — files or functions that have grown beyond a single clear responsibility. A file that was flagged `DONE_WITH_CONCERNS` by the Developer for size is a direct signal here. Look also for functions exceeding ~15 lines or classes exceeding ~50 lines — not as hard rules, but as indicators that responsibility decomposition may have been skipped.
+5. **Clarity** — will the next person understand this without reading the issue history?
+6. **Simplicity** — is there unnecessary complexity not justified by requirements?
 
 When two findings share the same priority, prefer the one closest to the public interface (API layer before internal utilities). List every finding before acting on any of them.
 
@@ -865,7 +886,7 @@ Read the relevant source files. Also read any settled specs in `specs/` for adja
 
 Evaluate against this checklist:
 
-**Correctness**: Does the code do what the change file's `## Scope` and `## Constraints` say it should?
+**Correctness**: Does the code do what the change file's `## Scope` and `## Constraints` say it should? Check both directions — not only under-building (missing requirements) but also over-building (unrequested features, extra flags, unnecessary abstraction, speculative generality). Code that exceeds its scope is a correctness problem: it adds untested surface area and can introduce dependencies the Analyst never intended.
 
 **Test coverage**: Are the critical paths tested? Are error paths tested?
 
@@ -1390,6 +1411,17 @@ Write `changes/<slug>.md`:
 
 Then create issues referencing the change file:
 
+**Change file self-review — run before creating any issues:**
+
+After writing `changes/<slug>.md`, inspect it before proceeding:
+
+1. **Placeholder scan** — any "TBD", "TODO", or incomplete sections? Fill them in now.
+2. **Internal consistency** — do `## Why`, `## Scope`, and `## Constraints` tell a coherent story? Does any section contradict another?
+3. **Scope focus** — is this change file scoped to a single coherent capability, or does it span multiple independent concerns that should each have their own change file?
+4. **Ambiguity check** — can any requirement in `## Scope` be interpreted two different ways? If so, pick one interpretation and make it explicit, or file an ambiguity issue before proceeding.
+
+Fix any issues inline before creating the downstream issues. A vague change file produces vague issues, which produce incorrect implementations.
+
 ```
 bd create "<requirement title>" \
   --description "Change file: changes/<slug>.md. From specs.md: '<requirement>'. Acceptance criterion: '<how to verify>'." \
@@ -1735,7 +1767,17 @@ Pattern match: <pattern name> — <one sentence explaining why the symptom fits 
 
 If the symptom does not clearly match, list the patterns ruled out and why, then proceed with a free-form trace.
 
-Read the relevant source files. Follow the execution path from the failure point backwards. Use the codebase — do not rely on memory of what the code probably does. Identify:
+Read the relevant source files. Follow the execution path from the failure point backwards. Use the codebase — do not rely on memory of what the code probably does.
+
+**When the failure path spans multiple components** (services, layers, modules, process boundaries), use component boundary tracing to narrow the search before reading deeply. For each boundary in the execution path:
+
+1. Identify what data or state enters the component.
+2. Identify what data or state exits the component.
+3. Determine at which boundary the data first becomes wrong.
+
+Work through boundaries in execution order — stop when you find the first boundary where input is correct but output is wrong. That component contains the root cause. Investigate only that component in depth. Do not read all components — the boundary check is the scope-narrowing step.
+
+After narrowing scope (or for single-component traces), identify:
 
 - The last point where the data or state is known to be correct
 - The first point where it is demonstrably wrong
