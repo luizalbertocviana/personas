@@ -54,7 +54,7 @@ If `git status` shows uncommitted changes, commit or stash them before proceedin
 ### Stale claim check
 
 ```
-bd list --status in-progress --json
+bd list --status in_progress --json
 ```
 
 For each issue returned, check the last commit referencing its ID:
