@@ -84,35 +84,47 @@ Once stale claims are resolved, continue to Step 3.
 ## 3. Check project state
 
 ```
-bd ready --json
+bd ready --json | jq '
+def pick(cond; persona):
+(map(select(cond)) | first) as $issue |
+if $issue then {"issue": $issue, "persona": persona} else empty end;
+if length == 0 then
+{"issue": null, "persona": ".personas/analyst.md"}
+else
+first(
+pick(.issue_type == "task" and (.labels | contains(["ambiguity"]));   ".personas/analyst.md"),
+pick(.issue_type == "task" and (.labels | contains(["plan"]));         ".personas/architect.md"),
+pick(.issue_type == "task" and (.labels | contains(["security"]));     ".personas/security.md"),
+pick(.issue_type == "task" and (.labels | contains(["review"]));       ".personas/reviewer.md"),
+pick(.issue_type == "task" and (.labels | contains(["test"]));         ".personas/tester.md"),
+pick(.issue_type == "bug"  and (.description | contains("root-cause:") | not); ".personas/investigator.md"),
+pick(.issue_type == "feature" or (.type == "bug" and (.description | contains("root-cause:"))) or (.type == "task" and (.labels | length) == 0); ".personas/developer.md"),
+pick(.issue_type == "task" and (.labels | contains(["refine"]));       ".personas/refiner.md"),
+pick(.issue_type == "task" and (.labels | contains(["docs"]));         ".personas/documentation.md"),
+pick(.issue_type == "task" and (.labels | contains(["health"]));       ".personas/monitor.md"),
+{"issue": null, "persona": ".personas/analyst.md"}
+)
+end
+'
 ```
 
 ## 4. Select your persona
 
-Scan the tags of all ready issues. Select exactly one persona using the first trigger that matches, in this order:
+The output of the previous step is a JSON object with two fields:
 
-1. `.personas/analyst.md` — when `bd ready` is empty
-2. `.personas/analyst.md` — when ready issues include a `task` tagged `ambiguity`
-3. `.personas/architect.md` — when ready issues include a `task` tagged `plan`
-4. `.personas/security.md` — when ready issues include a `task` tagged `security`
-5. `.personas/reviewer.md` — when ready issues include a `task` tagged `review`
-6. `.personas/tester.md` — when ready issues include a `task` tagged `test`
-7. `.personas/investigator.md` — when ready issues include a `bug` whose description does not contain a `root-cause:` note
-8. `.personas/developer.md` — when ready issues include a `feature`, `bug` (with `root-cause:` note), or untagged `task`
-9. `.personas/refiner.md` — when ready issues include a `task` tagged `refine`
-10. `.personas/documentation.md` — when ready issues include a `task` tagged `docs`
-11. `.personas/monitor.md` — when ready issues include a `task` tagged `health`
+- `persona` — path of the persona file to load
+- `issue` — the full issue object to work on, or `null` if the queue is empty
 
 ## 5. Load context for the selected issue
 
-Within the selected persona's trigger type, pick the first matching ready issue. Then:
-
-1. Run `bd show <issue-id> --json` fully — including all notes from previous sessions
-2. Extract the change file reference from the issue description (field: `Change file: changes/<slug>.md`)
-3. If a change file is referenced and exists: read `changes/<slug>.md` fully
-4. If a change file is referenced but does not exist: note the inconsistency — you will create it in your persona protocol before doing any other work
-5. If no change file is referenced and the issue type is `feature`, `bug`, or untagged `task`: treat this as a malformed issue — do not proceed. Write a note on the issue explaining that a change file reference is required, then stop and wait for a human to fix the description.
-6. If no change file is referenced and the issue type is anything else (e.g. `ambiguity`, `refine`, `test`, `review`, `docs`, `security`, `plan`, `health`): read `specs.md` as fallback context
+1. If `issue` is `null`: go to step  ## 6. Load and execute your persona
+2. If `issue` is not null:
+   1. Run `bd show <issue.id> --json` fully — including all notes from previous sessions
+   2. Extract the change file reference from the issue description (field: `Change file: changes/<slug>.md`)
+   3. If a change file is referenced and exists: read `changes/<slug>.md` fully
+   4. If a change file is referenced but does not exist: note the inconsistency — you will create it in your persona protocol before doing any other work
+   5. If no change file is referenced and the issue type is `feature`, `bug`, or untagged `task`: treat this as a malformed issue — do not proceed. Write a note on the issue explaining that a change file reference is required, then stop and wait for a human to fix the description.
+   6. If no change file is referenced and the issue type is anything else (e.g. `ambiguity`, `refine`, `test`, `review`, `docs`, `security`, `plan`, `health`): read `specs.md` as fallback context
 
 ## 6. Load and execute your persona
 
@@ -1447,7 +1459,7 @@ Stop immediately. Do not attempt any other work.
 
 ---
 
-## When triggered by empty queue
+## When triggered with null issue
 
 ### Step 1 — Read the full specification
 
