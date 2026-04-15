@@ -92,16 +92,16 @@ if length == 0 then
 {"issue": null, "persona": ".personas/analyst.md"}
 else
 first(
-pick(.issue_type == "task" and (.labels | contains(["ambiguity"]));   ".personas/analyst.md"),
-pick(.issue_type == "task" and (.labels | contains(["plan"]));         ".personas/architect.md"),
-pick(.issue_type == "task" and (.labels | contains(["security"]));     ".personas/security.md"),
-pick(.issue_type == "task" and (.labels | contains(["review"]));       ".personas/reviewer.md"),
-pick(.issue_type == "task" and (.labels | contains(["test"]));         ".personas/tester.md"),
+pick(.issue_type == "task" and ((.labels // []) | contains(["ambiguity"]));   ".personas/analyst.md"),
+pick(.issue_type == "task" and ((.labels // []) | contains(["plan"]));         ".personas/architect.md"),
+pick(.issue_type == "task" and ((.labels // []) | contains(["security"]));     ".personas/security.md"),
+pick(.issue_type == "task" and ((.labels // []) | contains(["review"]));       ".personas/reviewer.md"),
+pick(.issue_type == "task" and ((.labels // []) | contains(["test"]));         ".personas/tester.md"),
 pick(.issue_type == "bug"  and (.description | contains("root-cause:") | not); ".personas/investigator.md"),
-pick(.issue_type == "feature" or (.type == "bug" and (.description | contains("root-cause:"))) or (.type == "task" and (.labels | length) == 0); ".personas/developer.md"),
-pick(.issue_type == "task" and (.labels | contains(["refine"]));       ".personas/refiner.md"),
-pick(.issue_type == "task" and (.labels | contains(["docs"]));         ".personas/documentation.md"),
-pick(.issue_type == "task" and (.labels | contains(["health"]));       ".personas/monitor.md"),
+pick(.issue_type == "feature" or (.issue_type == "bug" and (.description | contains("root-cause:"))) or (.issue_type == "task" and ((.labels // []) | length) == 0); ".personas/developer.md"),
+pick(.issue_type == "task" and ((.labels // []) | contains(["refine"]));       ".personas/refiner.md"),
+pick(.issue_type == "task" and ((.labels // []) | contains(["docs"]));         ".personas/documentation.md"),
+pick(.issue_type == "task" and ((.labels // []) | contains(["health"]));       ".personas/monitor.md"),
 {"issue": null, "persona": ".personas/analyst.md"}
 )
 end
@@ -117,8 +117,8 @@ The output of the previous step is a JSON object with two fields:
 
 ## 5. Load context for the selected issue
 
-1. If `issue` is `null`: go to step  ## 6. Load and execute your persona
-2. If `issue` is not null:
+1. If `issue` is `null`: go to step  '## 6. Load and execute your persona'
+2. If `issue` is not `null`:
    1. Run `bd show <issue.id> --json` fully — including all notes from previous sessions
    2. Extract the change file reference from the issue description (field: `Change file: changes/<slug>.md`)
    3. If a change file is referenced and exists: read `changes/<slug>.md` fully
