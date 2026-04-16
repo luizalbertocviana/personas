@@ -90,7 +90,7 @@ Once stale claims are resolved, continue to Step 3.
 ## 3. Check project state
 
 ```
-bd ready --json | jq '
+bd ready -n 100 --json | jq '
 def pick(cond; persona):
 (map(select(cond)) | first) as $issue |
 if $issue then {"issue": $issue, "persona": persona} else empty end;
