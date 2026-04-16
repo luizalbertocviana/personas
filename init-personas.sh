@@ -726,7 +726,7 @@ Issue granularity guidelines:
 Update `## Scope` in the change file as you create each issue:
 
 ```
-- [ ] <plan-id>: architect plan ✓ (this session)
+- [x] <plan-id>: architect plan
 - [ ] <impl-id-1>: <one sentence description>
 - [ ] <impl-id-2>: <one sentence description>
 ```
