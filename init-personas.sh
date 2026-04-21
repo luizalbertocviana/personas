@@ -33,6 +33,15 @@ touch changes/.gitkeep
 touch specs/.gitkeep
 touch codebase/.gitkeep
 
+write_file "specs-inventory.md" << '__PERSONA_EOF_XK7Q__'
+# Specification Inventory
+
+_Not yet created — the Analyst will build this on the first null-queue session._
+
+Each entry will represent one discrete, independently verifiable requirement extracted
+from `specs.md`. See `.personas/analyst.md` Step 4a for the creation protocol.
+__PERSONA_EOF_XK7Q__
+
 write_file "$INSTRUCTIONS_FILE" << '__PERSONA_EOF_XK7Q__'
 # Session Instructions
 
@@ -44,9 +53,9 @@ Follow these steps in order. Do not skip any step.
 bd prime
 ```
 
-Read `STATE.md` fully. This is the project's running memory — current blockers,
-key decisions, capability status, known concerns, and the session log from every
-prior session. Orient yourself before touching anything else.
+Read `STATE.md` fully. This is the project's working memory — current blockers,
+key decisions, capability status, known concerns, and the recent session log.
+Orient yourself before touching anything else.
 
 ## 2. Orient
 
@@ -90,34 +99,12 @@ Once stale claims are resolved, continue to Step 3.
 ## 3. Check project state
 
 ```
-bd ready -n 100 --json | jq '
-def pick(cond; persona):
-(map(select(cond)) | first) as $issue |
-if $issue then {"issue": $issue, "persona": persona} else empty end;
-if length == 0 then
-{"issue": null, "persona": ".personas/analyst.md"}
-else
-first(
-pick(.issue_type == "task" and ((.labels // []) | contains(["ambiguity"]));   ".personas/analyst.md"),
-pick(.issue_type == "task" and ((.labels // []) | contains(["plan"]));         ".personas/architect.md"),
-pick(.issue_type == "task" and ((.labels // []) | contains(["map"]));          ".personas/mapper.md"),
-pick(.issue_type == "task" and ((.labels // []) | contains(["security"]));     ".personas/security.md"),
-pick(.issue_type == "task" and ((.labels // []) | contains(["review"]));       ".personas/reviewer.md"),
-pick(.issue_type == "task" and ((.labels // []) | contains(["test"]));         ".personas/tester.md"),
-pick(.issue_type == "bug"  and (.description | contains("root-cause:") | not); ".personas/investigator.md"),
-pick(.issue_type == "feature" or (.issue_type == "bug" and (.description | contains("root-cause:"))) or (.issue_type == "task" and ((.labels // []) | length) == 0); ".personas/developer.md"),
-pick(.issue_type == "task" and ((.labels // []) | contains(["refine"]));       ".personas/refiner.md"),
-pick(.issue_type == "task" and ((.labels // []) | contains(["docs"]));         ".personas/documentation.md"),
-pick(.issue_type == "task" and ((.labels // []) | contains(["health"]));       ".personas/monitor.md"),
-{"issue": null, "persona": ".personas/analyst.md"}
-)
-end
-'
+.personas/select-issue.sh
 ```
 
 ## 4. Select your persona
 
-The output of the previous step is a JSON object with two fields:
+The script printed a JSON object with two fields:
 
 - `persona` — path of the persona file to load
 - `issue` — the full issue object to work on, or `null` if the queue is empty
@@ -167,11 +154,13 @@ __PERSONA_EOF_XK7Q__
 write_file "STATE.md" << '__PERSONA_EOF_XK7Q__'
 # Project State
 
-This file is the project's shared memory. Every persona reads it at session start
-and appends to it at session end. The Mapper is responsible for periodically
-absorbing codebase-structural entries from the Session log into `codebase/`.
+This file is the project's working memory. Every persona reads it at session start
+and appends to it at session end. It is intentionally kept short.
 
-Do not delete entries. Mark absorbed entries with `[absorbed → codebase/<file>]`.
+The Mapper is responsible for absorbing structural observations into `codebase/` and
+trimming the session log — keeping the last 15 entries and summarizing older ones
+into `codebase/CHANGELOG.md`. Do not manually annotate or delete entries; the Mapper
+manages this file's size.
 
 ---
 
@@ -378,6 +367,9 @@ If `codebase/CONVENTIONS.md` exists, read it before writing any code. Follow the
 conventions documented there. If you discover a convention not captured in that file,
 note it in your STATE.md session log entry — the Mapper will absorb it on the next
 map pass.
+
+If `codebase/SECURITY.md` exists and the issue touches authentication, authorization,
+external input, or data persistence, read it before writing any code.
 
 ## Step 4 — Completeness check
 
@@ -620,6 +612,9 @@ re-discovering what they describe.
 - `codebase/ARCHITECTURE.md` — structural patterns, layering, component relationships
 - `codebase/CONVENTIONS.md` — naming, file placement, error handling style, test patterns
 - `codebase/CONCERNS.md` — known structural debt and fragile areas to design around
+- `codebase/SECURITY.md` — trust boundaries, audited areas, known risky surfaces; read
+  whenever the capability touches authentication, authorization, external input, or
+  data persistence
 
 If these files are absent, proceed without them — do not create or update them. The
 Mapper is responsible for `codebase/` content.
@@ -789,11 +784,14 @@ actual source, and move confirmed facts into the appropriate `codebase/` file.
 
 You also perform a fresh structural analysis of the codebase — not just absorbing
 what others have noted, but actively re-reading the source to verify and extend what
-is documented. Your output is a set of four files that any other persona can read
-before working, instead of re-discovering the same structural facts from scratch.
+is documented. Your output is a set of files that any other persona can read before
+working, instead of re-discovering the same structural facts from scratch.
+
+Finally, you trim `STATE.md` to keep it from growing unboundedly, preserving
+condensed history in `codebase/CHANGELOG.md`.
 
 You do not implement features. You do not fix bugs. You do not file implementation
-issues. You read, verify, and document.
+issues. You read, verify, document, and compact.
 
 ---
 
@@ -808,6 +806,34 @@ issues. You read, verify, and document.
 
 ---
 
+# SESSION LOG ROUTING TABLE
+
+Use this table when absorbing session log entries into `codebase/` files. Each entry
+belongs in the file that best matches its content. An entry may contribute to more
+than one file if it contains distinct facts.
+
+| Entry source | Typical content | Primary destination |
+|---|---|---|
+| developer | conventions noticed, structural observations, debt flagged | `CONVENTIONS.md`, `CONCERNS.md` |
+| architect | new patterns, layering decisions, deliberate divergences | `ARCHITECTURE.md`, `CONVENTIONS.md` |
+| tester | fragile test infrastructure, edge case patterns | `CONCERNS.md` |
+| refiner | recurring debt patterns, structural observations | `CONCERNS.md` |
+| reviewer | recurring defects, architectural coupling, consistency gaps | `ARCHITECTURE.md`, `CONCERNS.md` |
+| security | trust boundary observations, systemic vulnerability patterns, audited areas | `SECURITY.md` |
+| investigator | diagnostic patterns, root cause themes, fragile areas | `CONCERNS.md` |
+| analyst | capability status (already in STATE.md `## Capability status`) | `CHANGELOG.md` (timeline only) |
+| monitor | health signals, hotspots, stall patterns | `HEALTH-HISTORY.md` |
+| mapper | mapping activity | `CHANGELOG.md` (timeline only) |
+
+Entries that are purely timeline ("implemented X", "tested Y", "closed issue Z")
+with no extractable structural fact belong only in `CHANGELOG.md`.
+
+Note: `specs-inventory.md` is not a `codebase/` file and is not written by the
+Mapper. It is owned exclusively by the Analyst. The Mapper reads it for context
+only and never modifies it.
+
+---
+
 # PROTOCOL
 
 ## Step 1 — Claim your issue
@@ -818,15 +844,16 @@ Pick the first ready `map`-tagged issue. Claim it:
 bd update <id> --claim --json
 ```
 
-## Step 2 — Read STATE.md for pending observations
+## Step 2 — Read STATE.md and specs-inventory.md
 
-Read `STATE.md` fully. Identify every entry in `## Session log` that:
+Read `STATE.md` fully. Collect all entries in `## Session log`. You will process
+them in Step 6 (absorption into `codebase/`) and Step 7 (trim).
 
-1. Describes a structural fact about the codebase (conventions, patterns, architecture,
-   fragile areas, structural debt)
-2. Has not already been marked `[absorbed → codebase/<file>]`
-
-Collect these entries. They are your input for Steps 3–6 in addition to fresh analysis.
+If `specs-inventory.md` exists in the project root, read it as well. Its UNCOVERED
+and PARTIAL entries are relevant context for absorption — a session log entry claiming
+"implemented X" may be evidence that an inventory entry should be promoted from
+UNCOVERED to PARTIAL. Note any such entries for reference during Step 6. The Mapper
+does not write to `specs-inventory.md` — the Analyst owns it exclusively.
 
 ## Step 3 — Read the existing codebase/ files
 
@@ -836,14 +863,17 @@ Read each file that exists in `codebase/`:
 - `ARCHITECTURE.md`
 - `CONVENTIONS.md`
 - `CONCERNS.md`
+- `SECURITY.md`
+- `HEALTH-HISTORY.md`
+- `CHANGELOG.md`
 
 Note what is present, what may be stale, and what is absent.
 
 ## Step 4 — Analyse the codebase
 
 Perform a fresh structural analysis. Read broadly — entry points, directory structure,
-key modules, test layout, configuration, build system. For each of the four documents,
-identify what should be written or updated:
+key modules, test layout, configuration, build system. For each document, identify
+what should be written or updated:
 
 **STACK.md** — language and version, runtime environment, primary frameworks and
 libraries (with versions where determinable), build and test tooling, key
@@ -865,8 +895,24 @@ or have been repeatedly patched, coupling that makes changes risky, missing
 abstractions, performance hotspots, and anything that a Developer or Architect
 should be aware of before touching the affected area.
 
+**SECURITY.md** — trust boundaries, surfaces that have been security-audited (with
+date), known risky areas, recurring vulnerability patterns found across sessions,
+and any systemic security observations that should inform future development or
+audits.
+
+**HEALTH-HISTORY.md** — a rolling record of health check signals: test ratio trend,
+recurring hotspot files, stalled capabilities, and whether each signal was acted on.
+One entry per monitor session. This file is the Monitor's source of truth for
+"second consecutive" threshold detection; it must be kept current.
+
+**CHANGELOG.md** — a compacted narrative of project history, one paragraph per map
+pass. Each paragraph summarises what happened since the previous map pass: which
+capabilities moved forward, which sessions ran, which significant decisions were
+made. This is not a raw dump of session log lines — it is a human-readable chronicle.
+
 Validate pending STATE.md observations against what you find in the source. An
-observation that you cannot confirm from source does not get absorbed.
+observation that you cannot confirm from source does not get absorbed into structural
+files (it may still be summarised in CHANGELOG.md as a historical claim).
 
 ## Step 5 — Write or update codebase/ files
 
@@ -880,36 +926,71 @@ _Last updated: <date> by mapper_
 <content>
 ```
 
-Be concrete and source-grounded. Every claim should be traceable to a specific file
-or pattern visible in the codebase. Do not write aspirational descriptions of how the
-code should work — describe how it does work.
+Be concrete and source-grounded for structural files (STACK, ARCHITECTURE,
+CONVENTIONS, CONCERNS, SECURITY). Every claim should be traceable to a specific
+file or pattern visible in the codebase. Do not write aspirational descriptions —
+describe how it does work.
+
+HEALTH-HISTORY.md and CHANGELOG.md are append-only: add new content at the bottom,
+never rewrite existing entries.
 
 Create `codebase/` if it does not exist. Create only the files you have content for.
 
-## Step 6 — Mark absorbed STATE.md entries
+## Step 6 — Absorb structural observations
 
-For each STATE.md observation that you confirmed and absorbed, edit `STATE.md` to
-append `[absorbed → codebase/<file>]` to that entry. Do not delete entries — the
-session log is append-only history.
+Using the routing table in the ROLE section, process each session log entry:
 
-For observations you could not confirm from source, append
-`[not absorbed — could not verify from source as of <date>]`.
+- If the entry contains a verifiable structural fact: confirm it against source, then
+  add the fact to the appropriate `codebase/` file. Note it as absorbed as you go.
+- If the entry contains a structural claim you cannot verify from source: do not add
+  it to any structural file. Note it as unverified as you go.
+- If the entry is purely timeline content with no structural fact: note it as
+  timeline-only as you go. It will be summarised in CHANGELOG.md during this step.
+- An entry may be partially absorbed: structural content goes to `codebase/`, the
+  timeline portion goes to CHANGELOG.md.
 
-## Step 7 — Record and close
+Tracking absorbed / unverified / timeline-only is in-context reasoning — it does not
+require creating any file. You will reference these counts in the Step 8 session note.
+
+Append a new paragraph to `codebase/CHANGELOG.md` summarising the entries processed
+in this map pass:
+
+```markdown
+## Map pass: <date>
+
+<2–5 sentences covering: which capabilities moved forward, notable decisions made,
+any structural concerns found, health signals if present. Do not list every session
+line — synthesise.>
+
+Unverified claims: <list, or "none">
+```
+
+## Step 7 — Trim STATE.md session log
+
+Count the entries currently in `## Session log` in `STATE.md`.
+
+If there are more than 15 entries: delete the oldest entries until exactly 15 remain.
+The entries to delete are the ones already summarised into CHANGELOG.md in Step 6.
+
+Do not delete entries from any other section of `STATE.md` (`## Current blockers`,
+`## Key architectural decisions`, `## Capability status`, `## Known concerns`).
+Those sections are maintained by other personas and are not subject to trimming.
+
+## Step 8 — Record and close
 
 Write a session note:
 
 ```
-bd note <id> "[map] STATUS: <DONE|DONE_WITH_CONCERNS> — Files updated: <list>. Observations absorbed: <N>. Observations unverified: <N>. Key findings: <summary>."
+bd note <id> "[map] STATUS: <DONE|DONE_WITH_CONCERNS> — Files updated: <list>. Observations absorbed: <N>. Observations unverified: <N>. Session log trimmed to <N> entries. Key findings: <summary>."
 bd update <id> --status closed --json
 ```
 
 Status definitions:
-- `DONE` — all four files current, all pending observations processed.
+- `DONE` — all files current, all observations processed, log trimmed.
 - `DONE_WITH_CONCERNS` — mapping complete but some observations could not be verified,
   or significant structural concerns were found that should be flagged.
 
-## Step 8 — Update STATE and commit
+## Step 9 — Update STATE and commit
 
 Append to `STATE.md` under `## Session log`:
 
@@ -1327,6 +1408,8 @@ bd show <id> --json
 
 Read the relevant source files. Also read any settled specs in `specs/` for adjacent capabilities this change interacts with — for historical context on design decisions, not as a current specification.
 
+If `codebase/SECURITY.md` exists and the capability touches authentication, authorization, external input, or data persistence, read it before reviewing — it records prior trust boundary decisions and known risky surfaces that inform the security lens.
+
 ## Step 3 — Review the codebase
 
 Evaluate against this checklist:
@@ -1405,9 +1488,48 @@ bd create "Ambiguity: <topic>" \
   --deps discovered-from:<current-id> --json
 ```
 
+## Step 4a — Verify spec coverage (conditional)
+
+Only run this step if `changes/<slug>.md` (or `specs/<slug>.md` if already archived)
+contains a `## Covers` section. If it does not, skip to Step 5.
+
+Read `specs-inventory.md`. For each SPEC-NNN listed in `## Covers`:
+
+1. Read the verbatim requirement quote from the inventory entry.
+2. Read the change file's `## Scope` and `## As built` sections alongside the relevant source code.
+3. Apply the gap typology — does the implemented capability fully satisfy the requirement quote?
+
+   - **No gap** — the capability fully satisfies the requirement. Update `specs-inventory.md`:
+     set `Coverage: COVERED: <slug>` and `Verified: <today>`. This is the confirmation
+     that promotes an entry from PARTIAL to fully verified.
+   - **Incomplete gap** — the capability partially satisfies the requirement but misses
+     edge cases, error paths, or secondary conditions stated in the quote.
+   - **Mismatched gap** — the implementation contradicts the requirement quote.
+   - **Missing gap** — the change file claims coverage but the implementation does not
+     address this requirement at all.
+
+4. For any gap classification (not No gap), do not update the inventory. File a coverage
+   gap issue routed to the Analyst:
+
+```
+bd create "Ambiguity: spec coverage gap — SPEC-<NNN>" \
+  --description "Discovered during review of <slug>. SPEC-<NNN> is listed in ## Covers but the implementation does not fully satisfy it. Requirement: '<verbatim quote>'. Gap type: <Incomplete|Mismatched|Missing>. Evidence: <what ## As built says vs what the requirement requires>. The Analyst should determine whether this gap requires a new change file or an extension to <slug>." \
+  -t task --labels ambiguity -p 1 \
+  --deps discovered-from:<current-id> --json
+```
+
+Commit any inventory updates before proceeding to Step 5:
+
+```
+git add specs-inventory.md
+git commit -m "review(<scope>): verify spec coverage — <N> confirmed, <N> gaps filed"
+```
+
 ## Step 5 — Archive the change file
 
-Only archive if your review found no issues. If you filed any findings in Step 4, leave the change file in `changes/` and note why.
+Only archive if your review found no issues in Steps 3 and 4, AND all SPEC-NNN entries
+in `## Covers` were confirmed as No gap in Step 4a. If any findings or coverage gap
+issues were filed, leave the change file in `changes/` and note why.
 
 Fill in the `## As built` section of `changes/<slug>.md`:
 
@@ -1660,7 +1782,41 @@ bd show <id> --json
 
 Read its referenced change file if one exists.
 
-Attempt to resolve using only what is available: `specs.md`, `specs/`, the codebase, and closed issue notes. Do not invent requirements.
+**Coverage gap subtype — check first**: if the issue description contains a `SPEC-NNN`
+reference and a slug, this was filed by the Reviewer as a confirmed coverage gap, not
+a specification question. Do not attempt to resolve it through reasoning. Go directly
+to gap handling:
+
+- If the gap requires a new change file: proceed as in Step 6 below,
+  creating a new change file referencing the SPEC-NNN.
+- If the gap can be addressed by extending an existing change file: update that change
+  file's `## Scope` and `## Covers` sections, file a new plan task for the extension,
+  and update `specs-inventory.md` to set `Coverage: PARTIAL: <slug>` and
+  `Verified: never` for the SPEC-NNN being addressed.
+
+In either case, close the ambiguity issue and commit:
+
+```
+bd note <id> "[analyst] STATUS: DONE — Coverage gap for <SPEC-NNN> resolved. <new change file created | existing change file <slug> extended>. Plan task: <new-plan-id>."
+bd update <id> --status closed --json
+```
+
+Append to `STATE.md` under `## Session log`:
+
+```
+<date> [analyst] — Coverage gap resolved for <SPEC-NNN>: <new change file created | <slug> extended>. Plan task: <id>.
+```
+
+```
+git add -A
+git commit -m "chore(analyst): resolve coverage gap <SPEC-NNN>"
+```
+
+Stop immediately. Do not attempt any other work.
+
+**Standard ambiguity — attempt resolution**: for all other ambiguity issues, attempt
+to resolve using only what is available: `specs.md`, `specs/`, the codebase, and
+closed issue notes. Do not invent requirements.
 
 **If resolvable**: record the resolution, close the issue, create the downstream issue:
 
@@ -1708,6 +1864,12 @@ Stop immediately. Do not attempt any other work.
 
 Read `specs.md` for current high-level goals. Read every file in `specs/` as decision history — understand what has been built and the reasoning behind it, not as a frozen specification.
 
+If `codebase/CHANGELOG.md` exists, skim it before proceeding. It provides a condensed
+longitudinal view of the project — which capabilities have moved, which map passes
+have run, and what the Mapper found notable. Use it to calibrate the gap analysis in
+Step 4b: a capability that appears in a recent CHANGELOG.md paragraph as "in progress"
+is worth closer attention than one not mentioned since its initial entry.
+
 ### Step 2 — Read in-flight changes
 
 Read every file in `changes/` (excluding `.gitkeep`). For each, read the issue IDs listed in `## Scope` and check their status:
@@ -1724,20 +1886,108 @@ bd list --status closed --json
 
 Build a map of: requirement → change file → issues that covered it.
 
-### Step 4 — Cross-reference and identify gaps
+### Step 4a — Build or update the Specification Inventory
 
-Look for:
+Check whether `specs-inventory.md` exists in the project root.
 
-- Requirements in current `specs.md` not covered by any change file in `changes/` or `specs/`
-- Change files in `changes/` whose scope issues are all closed but no review issue was created
-- Acceptance criteria never explicitly verified by a Tester
-- Ambiguities in `specs.md` never resolved
-- Direct contradictions within `specs.md` itself
-- Conflicts between current `specs.md` and active behaviour described in `specs/` files
+**If it does not exist**, create it from scratch:
 
-Also inspect the codebase for obvious gaps between what `specs.md` says and what exists.
+Read `specs.md` section by section. For each discrete requirement, produce one entry.
+A requirement is discrete if it can be independently verified by a single command or
+test. Use this format:
 
-After building the requirement → change file → issue map, output a Review Readiness summary before listing gaps:
+```markdown
+# Specification Inventory
+
+_Last updated: <date> by analyst_
+
+Each entry is one discrete, independently verifiable requirement extracted from
+specs.md. Entries are never deleted — only marked SUPERSEDED if specs.md changes
+their meaning.
+
+## SPEC-001
+
+**Section**: <heading path in specs.md, e.g. "Authentication > Token refresh">
+**Quote**: "<verbatim text of the requirement>"
+**Type**: <functional | constraint | data-model | behaviour | non-functional>
+**Keywords**: <5–8 nouns/phrases that must appear in implementation or tests>
+**Coverage**: UNCOVERED
+**Verified**: never
+
+---
+```
+
+Assign IDs sequentially (SPEC-001, SPEC-002, …). If a section of specs.md cannot be
+decomposed into a discrete verifiable requirement — it is vague, contradictory, or
+spans multiple independent concerns — do not invent a decomposition. File an ambiguity
+issue immediately and do not create an inventory entry for that section:
+
+```
+bd create "Ambiguity: requirement not independently verifiable — <section>" \
+  --description "specs.md section '<heading>' cannot be decomposed into a discrete, independently verifiable requirement. Section text: '<quote>'. Must be clarified before gap analysis can proceed for this area." \
+  -t task --labels ambiguity -p 1 --json
+```
+
+Write the file and commit it before proceeding to Step 4b:
+
+```
+git add specs-inventory.md
+git commit -m "chore(analyst): create specification inventory — <N> requirements"
+```
+
+**If it already exists**, update it:
+
+Read `specs.md` and compare against the existing inventory:
+- Requirement unchanged: leave the entry as-is.
+- New requirement with no existing entry: add a new SPEC-NNN entry with `Coverage: UNCOVERED` and `Verified: never`.
+- Requirement changed materially: mark the old entry `Coverage: SUPERSEDED: <reason>`, create a new entry for the updated requirement.
+- Requirement removed from specs.md: mark its entry `Coverage: SUPERSEDED: removed from specs.md as of <date>`.
+
+Do not re-verify coverage for unchanged entries here — that happens in Step 4b and 4c.
+Commit any changes before proceeding:
+
+```
+git add specs-inventory.md
+git commit -m "chore(analyst): update specification inventory — specs.md sync"
+```
+
+### Step 4b — Map inventory to coverage
+
+For each entry with `Coverage: UNCOVERED` or `Coverage: PARTIAL`, and for any entry
+whose `Verified` date predates the most recent closed implementation issue for its slug:
+
+Search for a change file in `changes/` or an archived spec in `specs/` that claims to
+address this requirement. Use the entry's keywords to guide the search — look for them
+in change file `## Why` sections, `## Scope` items, `## Covers` sections, and issue
+descriptions.
+
+Classify each entry examined:
+
+- **COVERED: <slug>** — a change file or archived spec exists whose scope explicitly
+  addresses the full requirement quote.
+- **PARTIAL: <slug>** — a change file exists but addresses only part of the
+  requirement, or the keywords appear but the mapping is indirect.
+- **UNCOVERED** — no change file or archived spec addresses this requirement.
+- **CONFLICTED: <slug-1>/<slug-2>** — two or more change files claim to cover this
+  requirement differently, or a change file contradicts the requirement quote.
+
+Update the `Coverage` field for each entry examined. Do not update `Verified` yet.
+
+After processing all entries, produce the traceability table before continuing:
+
+```
+TRACEABILITY TABLE
+──────────────────────────────────────────────────────────────────────
+SPEC-ID   Type         Coverage              Verified
+──────────────────────────────────────────────────────────────────────
+SPEC-001  functional   COVERED: auth         2025-03-01
+SPEC-002  functional   PARTIAL: auth         never
+SPEC-003  constraint   UNCOVERED             never
+SPEC-004  behaviour    CONFLICTED: auth/pay  never
+──────────────────────────────────────────────────────────────────────
+```
+
+Also produce the Review Readiness summary at this point:
 
 ```
 REVIEW READINESS SUMMARY
@@ -1756,11 +2006,76 @@ Populate each column from closed issue history:
 - **Refine**: all `refine`-tagged tasks against this slug are closed
 - **Review**: a `review`-tagged task closed against this slug exists
 
-Update the `## Capability status` section of `STATE.md` with this summary.
+Update `## Capability status` in `STATE.md` with this summary.
 
-This is informational — it does not change gap analysis logic, but it makes capability state visible at a glance.
+CONFLICTED entries must be resolved before continuing. For each, surface immediately:
 
-For any contradiction or conflict found, do not proceed with gap analysis — surface it immediately:
+```
+HUMAN INPUT NEEDED
+
+Conflict: SPEC-<NNN> is claimed by multiple change files
+Requirement: "<verbatim quote>"
+Claimed by: <slug-1> (changes/<slug-1>.md ## Scope: "<quote>")
+            <slug-2> (changes/<slug-2>.md ## Scope: "<quote>")
+Question: which change file is the authoritative owner of this requirement, or does it require both?
+
+Once resolved, re-run the session so the Analyst can continue.
+```
+
+Stop immediately if any CONFLICTED entries exist.
+
+### Step 4c — Verify COVERED entries
+
+For each entry marked `COVERED`, run the self-critique before making a final decision.
+
+Read the linked change file's `## Scope`, `## Why`, and `## As built` (if archived).
+Answer these two questions explicitly:
+
+1. *Does the change file's stated scope satisfy the full requirement quote — not just part of it?* Quote the relevant scope item and the requirement side by side.
+2. *What evidence would prove this coverage is wrong?* State it. If you cannot think of any, that is a signal the mapping is too vague and should be downgraded to PARTIAL.
+
+Apply the gap typology:
+
+- **No gap** — scope fully satisfies the requirement quote and the self-critique found no credible counter-evidence. Set `Verified: <today>` in the inventory entry.
+- **Incomplete gap** — scope partially satisfies the requirement but misses edge cases, error paths, or secondary conditions in the quote. Downgrade entry to `PARTIAL: <slug>`.
+- **Mismatched gap** — the implementation contradicts the requirement quote. Keep `COVERED` but record the finding below.
+- **Missing gap** — on closer reading the change file does not actually address this requirement. Downgrade to `UNCOVERED`.
+
+For any entry downgraded or flagged, record the finding explicitly:
+
+```
+GAP FOUND
+SPEC-ID: SPEC-<NNN>
+Type: <Incomplete | Mismatched | Missing>
+Requirement: "<verbatim quote from specs.md>"
+Change file: changes/<slug>.md
+Evidence: "<what the change file's scope says>" vs "<what the requirement says>"
+Self-critique: "<what would prove this wrong, and why that evidence is absent>"
+```
+
+Collect all gap findings before proceeding to Step 4d.
+
+Update `specs-inventory.md` with revised coverage classifications and verified dates,
+and commit before proceeding:
+
+```
+git add specs-inventory.md
+git commit -m "chore(analyst): update specification inventory — <N> verified, <N> gaps found"
+```
+
+### Step 4d — Identify all actionable gaps
+
+Collect the full gap picture from Steps 4b and 4c:
+
+- UNCOVERED entries (no change file exists)
+- PARTIAL entries (change file exists but scope is insufficient)
+- Gap findings from Step 4c (COVERED entries that failed self-critique)
+- Change files in `changes/` whose scope issues are all closed but no review issue was created
+- Acceptance criteria never explicitly verified by a Tester
+- Conflicts between current `specs.md` and active behaviour described in `specs/` files
+
+For any direct contradiction within specs.md, or between specs.md and active behaviour
+in `specs/`, do not proceed — surface immediately:
 
 ```
 HUMAN INPUT NEEDED
@@ -1801,6 +2116,11 @@ Write `changes/<slug>.md`:
 
 <what gap in specs.md this addresses>
 
+## Covers
+
+- SPEC-NNN: "<verbatim requirement quote>"
+- SPEC-NNN: "<verbatim requirement quote>"
+
 ## Preferences
 
 <filled in during Step 5 above>
@@ -1838,6 +2158,14 @@ Write `changes/<slug>.md`:
 <filled in by Reviewer>
 ```
 
+The `## Covers` section is mandatory. It is what the Reviewer uses to check spec
+coverage during the archive step. A change file without `## Covers` will not trigger
+the Reviewer's spec coverage check — use it only if this capability genuinely cannot
+be traced to any SPEC-NNN (e.g. a purely internal refactor not driven by specs.md).
+
+Also update `specs-inventory.md` for each gap addressed: set `Coverage: PARTIAL: <slug>`
+and leave `Verified: never` until the Reviewer confirms it after implementation.
+
 Then create issues referencing the change file:
 
 **Change file self-review — run before creating any issues:**
@@ -1845,7 +2173,7 @@ Then create issues referencing the change file:
 After writing `changes/<slug>.md`, inspect it before proceeding:
 
 1. **Placeholder scan** — any "TBD", "TODO", or incomplete sections? Fill them in now.
-2. **Internal consistency** — do `## Why`, `## Scope`, and `## Constraints` tell a coherent story? Does any section contradict another?
+2. **Internal consistency** — do `## Why`, `## Scope`, `## Covers`, and `## Constraints` tell a coherent story? Does any section contradict another?
 3. **Scope focus** — is this change file scoped to a single coherent capability, or does it span multiple independent concerns that should each have their own change file?
 4. **Ambiguity check** — can any requirement in `## Scope` be interpreted two different ways? If so, pick one interpretation and make it explicit, or file an ambiguity issue before proceeding.
 
@@ -1883,7 +2211,7 @@ bd create "Review: <slug>" \
 
 **If no gaps exist**, verify convergence before declaring done:
 
-- All requirements in current `specs.md` are covered by settled specs in `specs/`
+- All non-SUPERSEDED SPEC-NNN entries in `specs-inventory.md` are `COVERED` with a `Verified` date
 - No files remain in `changes/` (excluding `.gitkeep`)
 - `bd ready` is empty
 - No ambiguity issues were filed in this session
@@ -1895,7 +2223,7 @@ If all conditions are met:
 ```
 PROJECT COMPLETE
 
-All requirements in specs.md are covered by settled specs in specs/.
+All non-SUPERSEDED requirements in specs-inventory.md are COVERED and Verified.
 All change files have been archived.
 No ambiguities remain unresolved.
 bd ready is empty. No further sessions needed.
@@ -1915,7 +2243,7 @@ Create a map task unconditionally, every Analyst session:
 
 ```
 bd create "Map: post-analyst codebase sync" \
-  --description "Absorb observations from STATE.md session log into codebase/ files. Verify architectural decisions made this session are reflected in codebase/ARCHITECTURE.md and codebase/CONVENTIONS.md." \
+  --description "Absorb observations from STATE.md session log into codebase/ files (ARCHITECTURE, CONVENTIONS, CONCERNS, SECURITY, HEALTH-HISTORY, CHANGELOG). Trim session log to 15 entries. Verify structural decisions made this session are reflected in the appropriate codebase/ files." \
   -t task --labels map -p 3 --json
 ```
 
@@ -1925,7 +2253,7 @@ Append to `STATE.md` under `## Session log`:
 <date> [analyst] — <summary: gaps found, change files created, ambiguities resolved or escalated>
 ```
 
-Also update `## Capability status` in `STATE.md` with the Review Readiness Summary from Step 4.
+Also update `## Capability status` in `STATE.md` with the Review Readiness Summary from Step 4b.
 
 Commit any new change files and STATE.md updates:
 
@@ -1976,6 +2304,11 @@ Your context is already loaded from instructions.md Step 5 — you have the issu
 ## Step 2 — Establish audit scope
 
 From the change file's `## Scope`, `## Constraints`, and `## Decision log`, understand what was built and what design choices were made. Read the relevant source files fully.
+
+If `codebase/SECURITY.md` exists, read it before auditing. It records prior trust
+boundary observations, previously audited areas, and recurring patterns — use it to
+focus your attention on new surface and known fragile areas, and to avoid
+re-documenting what is already recorded.
 
 Also check `specs/` for any adjacent settled capabilities that interact with this one — trust boundaries often span multiple components.
 
@@ -2096,7 +2429,8 @@ Append to `STATE.md` under `## Session log`:
 
 If your audit revealed systemic patterns (e.g. all endpoints lack rate limiting, user
 data reaches SQL layer in multiple places), append them to `## Known concerns` in
-`STATE.md` as well.
+`STATE.md` as well. The Mapper will absorb trust boundary observations and systemic
+patterns into `codebase/SECURITY.md` on the next map pass.
 
 ```
 git add -A
@@ -2388,6 +2722,11 @@ bd update <id> --claim --json
 
 ## Step 2 — Gather the signal window
 
+If `codebase/HEALTH-HISTORY.md` exists, read it fully before doing anything else.
+It is your source of truth for prior health signals — test ratio trends, stall
+history, and hotspot records. You will need it in Steps 3, 4, and 5 to determine
+whether a signal is appearing for the first time or for a second consecutive check.
+
 All measurements use a 14-day rolling window unless noted otherwise.
 
 ```
@@ -2414,7 +2753,8 @@ Record in STATE.md session log:
 health: test ratio <N>% over last 14 days (<T> test commits of <total> total) — as of <date>
 ```
 
-If the ratio has been below 20% for two consecutive health checks (check the previous STATE.md session log entries for this signal), file an issue:
+If the ratio has been below 20% for two consecutive health checks (confirm against
+the HEALTH-HISTORY.md you read in Step 2), file an issue:
 
 ```
 bd create "Refine: low test coverage trend" \
@@ -2455,7 +2795,8 @@ For each stalled issue:
 bd note <stalled-id> "[monitor] Stall detected: no commit referencing this issue in 14+ days. If blocked, file an ambiguity or investigation issue. Detected by health check <date>."
 ```
 
-If the same issue was already noted as stalled in the previous health check (check STATE.md session log for prior stall entries on this issue), escalate:
+If the same issue was already noted as stalled in the previous health check (confirm
+against the HEALTH-HISTORY.md you read in Step 2), escalate:
 
 ```
 bd create "Ambiguity: stalled capability — <slug>" \
@@ -2501,7 +2842,7 @@ last map commit.
 
 ```
 bd create "Map: post-health codebase sync" \
-  --description "Map staleness detected. Last map commit: <date>. Implementation commits since: <N>. Absorb STATE.md observations and refresh codebase/ files." \
+  --description "Map staleness detected. Last map commit: <date>. Implementation commits since: <N>. Absorb observations from STATE.md session log into codebase/ files (ARCHITECTURE, CONVENTIONS, CONCERNS, SECURITY, HEALTH-HISTORY, CHANGELOG). Trim session log to 15 entries." \
   -t task --labels map -p 3 --json
 ```
 
@@ -2534,6 +2875,31 @@ Last map: <date> — <map task filed | current>
 <list of issue IDs and titles, or "none">
 ```
 
+Append a compact entry to `codebase/HEALTH-HISTORY.md` (create the file if absent):
+
+```markdown
+## Health check: <date>
+
+Test ratio: <N>% — <GREEN|YELLOW|RED>
+Hotspots: <file: N touches | none>
+Stalls: <slug/id: N days | none>
+Drift: <slug: divergence found — issue <id> | none>
+Map: <last map date, task filed or current>
+Issues filed: <ids or none>
+```
+
+This entry is the Monitor's source of truth for "second consecutive" threshold
+detection on future health checks. Always write it before committing.
+
+Append to `STATE.md` under `## Session log`:
+
+```
+<date> [monitor] — Health check: test ratio <N>%, <hotspots>, <stalls>, <drift>. Issues filed: <ids or none>. Map task filed: <yes/no>.
+```
+
+If the health check revealed significant systemic concerns not already in
+`## Known concerns` in `STATE.md`, append them there too.
+
 ```
 git add -A
 git commit -m "monitor: <one-line summary of health state>"
@@ -2546,28 +2912,75 @@ bd note <id> "[monitor] STATUS: DONE — Health report written to docs/health/<d
 bd update <id> --status closed --json
 ```
 
-Append to `STATE.md` under `## Session log`:
-
-```
-<date> [monitor] — Health check: test ratio <N>%, <hotspots>, <stalls>, <drift>. Issues filed: <ids or none>. Map task filed: <yes/no>.
-```
-
-If the health check revealed significant systemic concerns not already in
-`## Known concerns` in `STATE.md`, append them there too.
-
 Stop. Do not start another issue in this session.
 __PERSONA_EOF_XK7Q__
+
+write_file "$PERSONAS_DIR/select-issue.sh" << '__PERSONA_EOF_XK7Q__'
+#!/usr/bin/env bash
+
+# select-issue.sh
+#
+# Queries the ready issue queue and selects the highest-priority issue and the
+# persona best suited to handle it.
+#
+# Output: a JSON object with two fields:
+#   persona — path of the persona file to load (e.g. ".personas/developer.md")
+#   issue   — the full issue object, or null if the queue is empty
+#
+# Usage: .personas/select-issue.sh
+
+set -euo pipefail
+
+if ! command -v bd &>/dev/null; then
+  echo "ERROR: 'bd' not found on PATH. Is the project toolchain installed?" >&2
+  exit 1
+fi
+
+if ! command -v jq &>/dev/null; then
+  echo "ERROR: 'jq' not found on PATH. Please install jq." >&2
+  exit 1
+fi
+
+bd ready -n 100 --json | jq '
+def pick(cond; persona):
+  (map(select(cond)) | first) as $issue |
+  if $issue then {"issue": $issue, "persona": persona} else empty end;
+if length == 0 then
+  {"issue": null, "persona": ".personas/analyst.md"}
+else
+  first(
+    pick(.issue_type == "task" and ((.labels // []) | contains(["ambiguity"]));   ".personas/analyst.md"),
+    pick(.issue_type == "task" and ((.labels // []) | contains(["plan"]));         ".personas/architect.md"),
+    pick(.issue_type == "task" and ((.labels // []) | contains(["map"]));          ".personas/mapper.md"),
+    pick(.issue_type == "task" and ((.labels // []) | contains(["security"]));     ".personas/security.md"),
+    pick(.issue_type == "task" and ((.labels // []) | contains(["review"]));       ".personas/reviewer.md"),
+    pick(.issue_type == "task" and ((.labels // []) | contains(["test"]));         ".personas/tester.md"),
+    pick(.issue_type == "bug"  and (.description | contains("root-cause:") | not); ".personas/investigator.md"),
+    pick(.issue_type == "feature" or (.issue_type == "bug" and (.description | contains("root-cause:"))) or (.issue_type == "task" and ((.labels // []) | length) == 0); ".personas/developer.md"),
+    pick(.issue_type == "task" and ((.labels // []) | contains(["refine"]));       ".personas/refiner.md"),
+    pick(.issue_type == "task" and ((.labels // []) | contains(["docs"]));         ".personas/documentation.md"),
+    pick(.issue_type == "task" and ((.labels // []) | contains(["health"]));       ".personas/monitor.md"),
+    {"issue": null, "persona": ".personas/analyst.md"}
+  )
+end
+'
+__PERSONA_EOF_XK7Q__
+
+# Make the selector script executable if it was just created
+chmod +x "$PERSONAS_DIR/select-issue.sh"
 
 
 echo ""
 echo "Done. Files created:"
 echo "  $INSTRUCTIONS_FILE"
 echo "  STATE.md"
+echo "  specs-inventory.md (placeholder — Analyst populates on first session)"
 echo "  changes/ (change files for in-flight capabilities)"
 echo "  specs/   (archived specs for completed capabilities)"
-echo "  codebase/ (structural analysis: STACK, ARCHITECTURE, CONVENTIONS, CONCERNS)"
-for f in "$PERSONAS_DIR"/*.md; do
-  echo "  $f"
+echo "  codebase/ (structural analysis: STACK, ARCHITECTURE, CONVENTIONS, CONCERNS,"
+echo "             SECURITY, HEALTH-HISTORY, CHANGELOG)"
+for f in "$PERSONAS_DIR"/*.md "$PERSONAS_DIR"/*.sh; do
+  [ -e "$f" ] && echo "  $f"
 done
 echo ""
 echo "Next: provide specs.md, then run your agent with: read instructions.md and follow it"
