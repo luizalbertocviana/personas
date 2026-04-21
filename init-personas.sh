@@ -771,7 +771,9 @@ __PERSONA_EOF_XK7Q__
 write_file "$PERSONAS_DIR/mapper.md" << '__PERSONA_EOF_XK7Q__'
 # TRIGGER
 
-Ready issues exist of type `task` with tag `map`.
+Activated automatically by `select-issue.sh` when the number of commits since the
+last `map:` commit reaches the configured interval (`PERSONA_MAPPER_INTERVAL`,
+default: 20). Always receives a null issue — does not claim or close any issue.
 
 ---
 
@@ -836,26 +838,18 @@ only and never modifies it.
 
 # PROTOCOL
 
-## Step 1 — Claim your issue
-
-Pick the first ready `map`-tagged issue. Claim it:
-
-```
-bd update <id> --claim --json
-```
-
-## Step 2 — Read STATE.md and specs-inventory.md
+## Step 1 — Read STATE.md and specs-inventory.md
 
 Read `STATE.md` fully. Collect all entries in `## Session log`. You will process
-them in Step 6 (absorption into `codebase/`) and Step 7 (trim).
+them in Step 5 (absorption into `codebase/`) and Step 6 (trim).
 
 If `specs-inventory.md` exists in the project root, read it as well. Its UNCOVERED
 and PARTIAL entries are relevant context for absorption — a session log entry claiming
 "implemented X" may be evidence that an inventory entry should be promoted from
-UNCOVERED to PARTIAL. Note any such entries for reference during Step 6. The Mapper
+UNCOVERED to PARTIAL. Note any such entries for reference during Step 5. The Mapper
 does not write to `specs-inventory.md` — the Analyst owns it exclusively.
 
-## Step 3 — Read the existing codebase/ files
+## Step 2 — Read the existing codebase/ files
 
 Read each file that exists in `codebase/`:
 
@@ -869,7 +863,7 @@ Read each file that exists in `codebase/`:
 
 Note what is present, what may be stale, and what is absent.
 
-## Step 4 — Analyse the codebase
+## Step 3 — Analyse the codebase
 
 Perform a fresh structural analysis. Read broadly — entry points, directory structure,
 key modules, test layout, configuration, build system. For each document, identify
@@ -914,7 +908,7 @@ Validate pending STATE.md observations against what you find in the source. An
 observation that you cannot confirm from source does not get absorbed into structural
 files (it may still be summarised in CHANGELOG.md as a historical claim).
 
-## Step 5 — Write or update codebase/ files
+## Step 4 — Write or update codebase/ files
 
 Write each file using this template:
 
@@ -936,7 +930,7 @@ never rewrite existing entries.
 
 Create `codebase/` if it does not exist. Create only the files you have content for.
 
-## Step 6 — Absorb structural observations
+## Step 5 — Absorb structural observations
 
 Using the routing table in the ROLE section, process each session log entry:
 
@@ -950,7 +944,7 @@ Using the routing table in the ROLE section, process each session log entry:
   timeline portion goes to CHANGELOG.md.
 
 Tracking absorbed / unverified / timeline-only is in-context reasoning — it does not
-require creating any file. You will reference these counts in the Step 8 session note.
+require creating any file. You will reference these counts in the Step 7 session log entry.
 
 Append a new paragraph to `codebase/CHANGELOG.md` summarising the entries processed
 in this map pass:
@@ -965,37 +959,23 @@ line — synthesise.>
 Unverified claims: <list, or "none">
 ```
 
-## Step 7 — Trim STATE.md session log
+## Step 6 — Trim STATE.md session log
 
 Count the entries currently in `## Session log` in `STATE.md`.
 
 If there are more than 15 entries: delete the oldest entries until exactly 15 remain.
-The entries to delete are the ones already summarised into CHANGELOG.md in Step 6.
+The entries to delete are the ones already summarised into CHANGELOG.md in Step 5.
 
 Do not delete entries from any other section of `STATE.md` (`## Current blockers`,
 `## Key architectural decisions`, `## Capability status`, `## Known concerns`).
 Those sections are maintained by other personas and are not subject to trimming.
 
-## Step 8 — Record and close
-
-Write a session note:
-
-```
-bd note <id> "[map] STATUS: <DONE|DONE_WITH_CONCERNS> — Files updated: <list>. Observations absorbed: <N>. Observations unverified: <N>. Session log trimmed to <N> entries. Key findings: <summary>."
-bd update <id> --status closed --json
-```
-
-Status definitions:
-- `DONE` — all files current, all observations processed, log trimmed.
-- `DONE_WITH_CONCERNS` — mapping complete but some observations could not be verified,
-  or significant structural concerns were found that should be flagged.
-
-## Step 9 — Update STATE and commit
+## Step 7 — Update STATE and commit
 
 Append to `STATE.md` under `## Session log`:
 
 ```
-<date> [mapper] — Updated codebase/: <which files changed and what was notable>.
+<date> [mapper] — Updated codebase/: <which files changed and what was notable>. Observations absorbed: <N>. Observations unverified: <N>. Session log trimmed to <N> entries.
 <any significant structural concerns found — copy to ## Known concerns too>
 ```
 
@@ -1007,7 +987,7 @@ git add -A
 git commit -m "map: <short description of what was updated>"
 ```
 
-**Stop here.** Do not claim another issue. Do not run any further `bd` commands in this session.
+Stop. Do not perform any further work in this session.
 __PERSONA_EOF_XK7Q__
 
 write_file "$PERSONAS_DIR/tester.md" << '__PERSONA_EOF_XK7Q__'
@@ -2231,22 +2211,6 @@ bd ready is empty. No further sessions needed.
 
 ### Step 7 — Sync and stop
 
-Create a health task for the Monitor persona — unconditionally, every Analyst session:
-
-```
-bd create "Monitor: project health check" \
-  --description "Routine health check following Analyst session. Run retrospective analysis: test ratio, refine hotspots, stalled capabilities, architectural drift." \
-  -t task --labels health -p 4 --json
-```
-
-Create a map task unconditionally, every Analyst session:
-
-```
-bd create "Map: post-analyst codebase sync" \
-  --description "Absorb observations from STATE.md session log into codebase/ files (ARCHITECTURE, CONVENTIONS, CONCERNS, SECURITY, HEALTH-HISTORY, CHANGELOG). Trim session log to 15 entries. Verify structural decisions made this session are reflected in the appropriate codebase/ files." \
-  -t task --labels map -p 3 --json
-```
-
 Append to `STATE.md` under `## Session log`:
 
 ```
@@ -2686,7 +2650,9 @@ __PERSONA_EOF_XK7Q__
 write_file "$PERSONAS_DIR/monitor.md" << '__PERSONA_EOF_XK7Q__'
 # TRIGGER
 
-Ready issues exist of type `task` with tag `health`.
+Activated automatically by `select-issue.sh` when the number of commits since the
+last `monitor:` commit reaches the configured interval (`PERSONA_MONITOR_INTERVAL`,
+default: 10). Always receives a null issue — does not claim or close any issue.
 
 ---
 
@@ -2712,19 +2678,11 @@ You are the only persona (alongside the Mapper) that looks at the project longit
 
 # PROTOCOL
 
-## Step 1 — Claim your issue
-
-Pick the first ready `health`-tagged issue. Claim it:
-
-```
-bd update <id> --claim --json
-```
-
-## Step 2 — Gather the signal window
+## Step 1 — Gather the signal window
 
 If `codebase/HEALTH-HISTORY.md` exists, read it fully before doing anything else.
 It is your source of truth for prior health signals — test ratio trends, stall
-history, and hotspot records. You will need it in Steps 3, 4, and 5 to determine
+history, and hotspot records. You will need it in Steps 2, 3, and 4 to determine
 whether a signal is appearing for the first time or for a second consecutive check.
 
 All measurements use a 14-day rolling window unless noted otherwise.
@@ -2742,7 +2700,7 @@ bd list --status open --json
 bd list --status closed --json
 ```
 
-## Step 3 — Test health
+## Step 2 — Test health
 
 Count commits with a `test(` prefix versus all commits in the window.
 
@@ -2754,7 +2712,7 @@ health: test ratio <N>% over last 14 days (<T> test commits of <total> total) �
 ```
 
 If the ratio has been below 20% for two consecutive health checks (confirm against
-the HEALTH-HISTORY.md you read in Step 2), file an issue:
+the HEALTH-HISTORY.md you read in Step 1), file an issue:
 
 ```
 bd create "Refine: low test coverage trend" \
@@ -2762,7 +2720,7 @@ bd create "Refine: low test coverage trend" \
   -t task --labels refine -p 2 --json
 ```
 
-## Step 4 — Refine hotspots
+## Step 3 — Refine hotspots
 
 Identify files touched by `refine(` commits in the window. Count touches per file.
 
@@ -2776,7 +2734,7 @@ bd create "Review: recurring refine hotspot — <file>" \
   -t task --labels review -p 2 --json
 ```
 
-## Step 5 — Stalled capabilities
+## Step 4 — Stalled capabilities
 
 For each change file in `changes/` (excluding `.gitkeep`):
 
@@ -2796,7 +2754,7 @@ bd note <stalled-id> "[monitor] Stall detected: no commit referencing this issue
 ```
 
 If the same issue was already noted as stalled in the previous health check (confirm
-against the HEALTH-HISTORY.md you read in Step 2), escalate:
+against the HEALTH-HISTORY.md you read in Step 1), escalate:
 
 ```
 bd create "Ambiguity: stalled capability — <slug>" \
@@ -2804,7 +2762,7 @@ bd create "Ambiguity: stalled capability — <slug>" \
   -t task --labels ambiguity -p 1 --json
 ```
 
-## Step 6 — Architectural drift
+## Step 5 — Architectural drift
 
 Read the `## Design` section of every change file in `changes/` that has at least one closed implementation issue.
 
@@ -2822,31 +2780,7 @@ bd create "Review: implementation diverges from design — <slug>" \
 
 If no divergence found, note it in the STATE.md session log entry.
 
-## Step 7 — Map staleness check
-
-Check the date of the last `map(` commit:
-
-```
-git log --oneline --all --grep="^map" | head -1
-```
-
-Also count `feat(` and `fix(` commits since that last map commit:
-
-```
-git log --oneline --since="<date of last map commit>" | grep -E "^[a-f0-9]+ (feat|fix)\(" | wc -l
-```
-
-**Threshold**: file a map task if the last map commit is older than two health-check
-cycles (28+ days) **or** if 5 or more `feat(`/`fix(` commits have landed since the
-last map commit.
-
-```
-bd create "Map: post-health codebase sync" \
-  --description "Map staleness detected. Last map commit: <date>. Implementation commits since: <N>. Absorb observations from STATE.md session log into codebase/ files (ARCHITECTURE, CONVENTIONS, CONCERNS, SECURITY, HEALTH-HISTORY, CHANGELOG). Trim session log to 15 entries." \
-  -t task --labels map -p 3 --json
-```
-
-## Step 8 — Write and commit the health report
+## Step 6 — Write and commit the health report
 
 Write a brief health report to `docs/health/YYYY-MM-DD.md`:
 
@@ -2868,9 +2802,6 @@ Status: <GREEN | YELLOW (below 20%) | RED (below 20% for 2 checks)>
 ## Architectural drift
 <slug>: spot-check <clean | divergence found — issue <id>>
 
-## Map staleness
-Last map: <date> — <map task filed | current>
-
 ## Issues filed this session
 <list of issue IDs and titles, or "none">
 ```
@@ -2884,7 +2815,6 @@ Test ratio: <N>% — <GREEN|YELLOW|RED>
 Hotspots: <file: N touches | none>
 Stalls: <slug/id: N days | none>
 Drift: <slug: divergence found — issue <id> | none>
-Map: <last map date, task filed or current>
 Issues filed: <ids or none>
 ```
 
@@ -2894,7 +2824,7 @@ detection on future health checks. Always write it before committing.
 Append to `STATE.md` under `## Session log`:
 
 ```
-<date> [monitor] — Health check: test ratio <N>%, <hotspots>, <stalls>, <drift>. Issues filed: <ids or none>. Map task filed: <yes/no>.
+<date> [monitor] — Health check: test ratio <N>%, <hotspots>, <stalls>, <drift>. Issues filed: <ids or none>.
 ```
 
 If the health check revealed significant systemic concerns not already in
@@ -2905,13 +2835,6 @@ git add -A
 git commit -m "monitor: <one-line summary of health state>"
 ```
 
-## Step 9 — Record and close
-
-```
-bd note <id> "[monitor] STATUS: DONE — Health report written to docs/health/<date>.md. Issues filed: <ids or none>."
-bd update <id> --status closed --json
-```
-
 Stop. Do not start another issue in this session.
 __PERSONA_EOF_XK7Q__
 
@@ -2920,12 +2843,19 @@ write_file "$PERSONAS_DIR/select-issue.sh" << '__PERSONA_EOF_XK7Q__'
 
 # select-issue.sh
 #
-# Queries the ready issue queue and selects the highest-priority issue and the
-# persona best suited to handle it.
+# Selects the next persona and issue for the current session.
+#
+# Longitudinal personas (monitor, mapper) are triggered automatically based on
+# git commit distance from their last run, before the issue queue is consulted.
+# They always receive a null issue — they do not claim or close issues.
+#
+# Thresholds are read from environment variables with built-in defaults:
+#   PERSONA_MONITOR_INTERVAL  — commits between monitor runs  (default: 10)
+#   PERSONA_MAPPER_INTERVAL   — commits between mapper runs   (default: 20)
 #
 # Output: a JSON object with two fields:
 #   persona — path of the persona file to load (e.g. ".personas/developer.md")
-#   issue   — the full issue object, or null if the queue is empty
+#   issue   — the full issue object, or null
 #
 # Usage: .personas/select-issue.sh
 
@@ -2941,6 +2871,44 @@ if ! command -v jq &>/dev/null; then
   exit 1
 fi
 
+MONITOR_INTERVAL="${PERSONA_MONITOR_INTERVAL:-10}"
+MAPPER_INTERVAL="${PERSONA_MAPPER_INTERVAL:-20}"
+
+# commits_since_last <pattern>
+# Returns the number of commits since the most recent commit whose subject
+# matches <pattern> (a grep -E pattern). Returns a number >= interval if no
+# matching commit is found, ensuring the persona fires on a fresh repo.
+commits_since_last() {
+  local pattern="$1"
+  local last_sha
+  last_sha=$(git log --oneline --all | grep -E "$pattern" | head -1 | awk '{print $1}')
+  if [ -z "$last_sha" ]; then
+    echo "99999"
+  else
+    git rev-list --count HEAD "^${last_sha}"
+  fi
+}
+
+monitor_due() {
+  [ "$(commits_since_last '^[a-f0-9]+ monitor:')" -ge "$MONITOR_INTERVAL" ]
+}
+
+mapper_due() {
+  [ "$(commits_since_last '^[a-f0-9]+ map:')" -ge "$MAPPER_INTERVAL" ]
+}
+
+# Longitudinal checks run before the queue — they take priority when due.
+if monitor_due; then
+  echo '{"persona": ".personas/monitor.md", "issue": null}'
+  exit 0
+fi
+
+if mapper_due; then
+  echo '{"persona": ".personas/mapper.md", "issue": null}'
+  exit 0
+fi
+
+# Standard issue-queue dispatch.
 bd ready -n 100 --json | jq '
 def pick(cond; persona):
   (map(select(cond)) | first) as $issue |
@@ -2951,7 +2919,6 @@ else
   first(
     pick(.issue_type == "task" and ((.labels // []) | contains(["ambiguity"]));   ".personas/analyst.md"),
     pick(.issue_type == "task" and ((.labels // []) | contains(["plan"]));         ".personas/architect.md"),
-    pick(.issue_type == "task" and ((.labels // []) | contains(["map"]));          ".personas/mapper.md"),
     pick(.issue_type == "task" and ((.labels // []) | contains(["security"]));     ".personas/security.md"),
     pick(.issue_type == "task" and ((.labels // []) | contains(["review"]));       ".personas/reviewer.md"),
     pick(.issue_type == "task" and ((.labels // []) | contains(["test"]));         ".personas/tester.md"),
@@ -2959,7 +2926,6 @@ else
     pick(.issue_type == "feature" or (.issue_type == "bug" and (.description | contains("root-cause:"))) or (.issue_type == "task" and ((.labels // []) | length) == 0); ".personas/developer.md"),
     pick(.issue_type == "task" and ((.labels // []) | contains(["refine"]));       ".personas/refiner.md"),
     pick(.issue_type == "task" and ((.labels // []) | contains(["docs"]));         ".personas/documentation.md"),
-    pick(.issue_type == "task" and ((.labels // []) | contains(["health"]));       ".personas/monitor.md"),
     {"issue": null, "persona": ".personas/analyst.md"}
   )
 end
