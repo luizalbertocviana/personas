@@ -96,34 +96,22 @@ interrupted mid-implementation. Review before proceeding.
 
 Once stale claims are resolved, continue to Step 3.
 
-## 3. Check project state
+## 3. Dispatch and load context
 
 ```
-.personas/select-issue.sh
+.personas/load-context.sh
 ```
 
-## 4. Select your persona
+This script loads all required context (issue details, change file or fallback specs) and prints it to stdout.
 
-The script printed a JSON object with two fields:
+- If it exits with code 1: a note has been written to the issue. **Stop immediately** — wait for a human to fix the problem described in the output before re-running the session.
+- If it exits with code 0: read the script's full output as your session context before proceeding.
 
-- `persona` — path of the persona file to load
-- `issue` — the full issue object to work on, or `null` if the queue is empty
+## 4. Load and execute your persona
 
-## 5. Load context for the selected issue
-
-1. If `issue` is `null`: go to step '## 6. Load and execute your persona'
-2. If `issue` is not `null`:
-   1. Run `bd show <issue.id> --json` fully — including all notes from previous sessions
-   2. Extract the change file reference from the issue description (field: `Change file: changes/<slug>.md`)
-   3. If a change file is referenced and exists: read `changes/<slug>.md` fully
-   4. If a change file is referenced but does not exist: note the inconsistency — you will create it in your persona protocol before doing any other work
-   5. If no change file is referenced and the issue type is `feature`, `bug`, or untagged `task`: treat this as a malformed issue — do not proceed. Write a note on the issue explaining that a change file reference is required, then stop and wait for a human to fix the description.
-   6. If no change file is referenced and the issue type is anything else (e.g. `ambiguity`, `refine`, `test`, `review`, `docs`, `security`, `plan`): read `specs.md` as fallback context
-
-## 6. Load and execute your persona
-
-Read the selected persona file fully. Read no other persona file. Follow its instructions exactly until it tells you to stop.
-
+The script output ends with a `PERSONA` block naming the persona file to use.
+Run the listed commands, read the listed files, then read that persona file fully.
+Read no other persona file. Follow its instructions exactly until it tells you to stop.
 ## Commit message convention
 
 All personas use the same format:
@@ -276,13 +264,14 @@ Before deferring any part of a requirement, ask whether the shortcut is genuinel
 
 ## Step 1 — Claim your issue
 
-Pick the first matching ready issue. Claim it atomically:
+The issue and persona were selected by `load-context.sh` before this file was loaded.
+Claim the issue now:
 
 ```
 bd update <id> --claim --json
 ```
 
-Your context is already loaded from instructions.md Step 5 — you have the issue details and the change file. If the change file was missing, create it now before proceeding:
+Your session context — issue details and change file — was loaded before you reached this step. If the change file was missing, create it now before proceeding:
 
 ```
 mkdir -p changes
@@ -597,13 +586,14 @@ Restraint is a design virtue. Do not propose abstractions that are not required 
 
 ## Step 1 — Claim your issue
 
-Pick the first ready `plan`-tagged issue. Claim it:
+The issue and persona were selected by `load-context.sh` before this file was loaded.
+Claim the issue now:
 
 ```
 bd update <id> --claim --json
 ```
 
-Your context is already loaded from instructions.md Step 5 — you have the issue details and the change file.
+Your session context — issue details and change file — was loaded before you reached this step.
 
 ## Step 2 — Read codebase context
 
@@ -1023,13 +1013,14 @@ You never mark a component passed unless ALL its acceptance criteria are verifie
 
 ## Step 1 — Claim your issue
 
-Pick the first ready `test`-tagged issue. Claim it:
+The issue and persona were selected by `load-context.sh` before this file was loaded.
+Claim the issue now:
 
 ```
 bd update <id> --claim --json
 ```
 
-Your context is already loaded from instructions.md Step 5 — you have the issue details and the change file.
+Your session context — issue details and change file — was loaded before you reached this step.
 
 ## Step 2 — Understand what to test
 
@@ -1201,13 +1192,14 @@ Never propose changes that conflict with evident design decisions without first 
 
 ## Step 1 — Claim your issue
 
-Pick the first ready `refine`-tagged issue. Claim it:
+The issue and persona were selected by `load-context.sh` before this file was loaded.
+Claim the issue now:
 
 ```
 bd update <id> --claim --json
 ```
 
-Your context is already loaded from instructions.md Step 5 — you have the issue details and the change file. Also read the parent implementation issue notes:
+Your session context — issue details and change file — was loaded before you reached this step. Also read the parent implementation issue notes:
 
 ```
 bd show <parent-id> --json
@@ -1354,13 +1346,14 @@ You produce findings and archive change files. You do not fix things yourself.
 
 ## Step 1 — Claim your issue
 
-Pick the first ready `review`-tagged issue. Claim it:
+The issue and persona were selected by `load-context.sh` before this file was loaded.
+Claim the issue now:
 
 ```
 bd update <id> --claim --json
 ```
 
-Your context is already loaded from instructions.md Step 5 — you have the issue details and the change file.
+Your session context — issue details and change file — was loaded before you reached this step.
 
 ## Step 2 — Establish your review scope
 
@@ -1608,13 +1601,14 @@ Accuracy is non-negotiable. Never document behaviour you have not verified by re
 
 ## Step 1 — Claim your issue
 
-Pick the first ready `docs`-tagged issue. Claim it:
+The issue and persona were selected by `load-context.sh` before this file was loaded.
+Claim the issue now:
 
 ```
 bd update <id> --claim --json
 ```
 
-Your context is already loaded from instructions.md Step 5 — you have the issue details and the change file.
+Your session context — issue details and change file — was loaded before you reached this step.
 
 ## Step 2 — Understand the scope
 
@@ -1767,14 +1761,13 @@ than you need, do not file more than the issue requires, do not linger.
 
 ## Step 1 — Claim the issue
 
-Claim the highest-priority ready `ambiguity`-tagged issue:
+The issue and persona were selected by `load-context.sh` before this file was loaded.
+Claim the issue now and read its full detail including all notes from previous sessions:
 
 ```
 bd update <id> --claim --json
 bd show <id> --json
 ```
-
-Read the issue fully, including all notes from previous sessions.
 
 ## Step 2 — Classify the ambiguity
 
@@ -2908,13 +2901,14 @@ You do not implement fixes. You do not refactor. You file precise, actionable fi
 
 ## Step 1 — Claim your issue
 
-Pick the first ready `security`-tagged issue. Claim it:
+The issue and persona were selected by `load-context.sh` before this file was loaded.
+Claim the issue now:
 
 ```
 bd update <id> --claim --json
 ```
 
-Your context is already loaded from instructions.md Step 5 — you have the issue details and the change file.
+Your session context — issue details and change file — was loaded before you reached this step.
 
 ## Step 2 — Establish audit scope
 
@@ -3115,13 +3109,14 @@ If the symptom does not clearly match any pattern, note which patterns were rule
 
 ## Step 1 — Claim your issue
 
-Pick the first ready `bug` issue without a `root-cause:` note. Claim it:
+The issue and persona were selected by `load-context.sh` before this file was loaded.
+Claim the issue now:
 
 ```
 bd update <id> --claim --json
 ```
 
-Your context is already loaded from instructions.md Step 5 — you have the issue details and the change file if one is referenced.
+Your session context — issue details and change file (if referenced) — was loaded before you reached this step.
 
 ## Step 2 — Workflow forensics check
 
@@ -3489,6 +3484,156 @@ git commit -m "monitor: <one-line summary of health state>"
 Stop. Do not start another issue in this session.
 __PERSONA_EOF_XK7Q__
 
+write_file "$PERSONAS_DIR/load-context.sh" << '__PERSONA_EOF_XK7Q__'
+#!/usr/bin/env bash
+
+# load-context.sh
+#
+# Single entry point for session dispatch and context loading.
+#
+# Calls select-issue.sh to determine the persona and issue for this session,
+# then resolves which commands to run and which files to read, and prints
+# that as structured instructions for the agent.
+#
+# The agent executes the listed commands and reads the listed files using its
+# own native tools (not shell stdout), then reads the named persona file and
+# follows its instructions exactly.
+#
+# Exit codes:
+#   0 — context resolved; agent should follow the printed instructions
+#   1 — malformed issue detected; a bd note has been written; agent must stop
+#
+# Usage: .personas/load-context.sh
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if ! command -v bd &>/dev/null; then
+  echo "ERROR: 'bd' not found on PATH. Is the project toolchain installed?" >&2
+  exit 1
+fi
+
+if ! command -v jq &>/dev/null; then
+  echo "ERROR: 'jq' not found on PATH. Please install jq." >&2
+  exit 1
+fi
+
+# ── Select issue and persona ──────────────────────────────────────────────────
+
+SELECTION=$("$SCRIPT_DIR/select-issue.sh")
+
+PERSONA=$(echo "$SELECTION" | jq -r '.persona')
+ISSUE=$(echo "$SELECTION"   | jq -c '.issue')   # compact JSON or "null"
+
+# ── Header ────────────────────────────────────────────────────────────────────
+
+echo "================================================================"
+echo "SESSION CONTEXT"
+echo "================================================================"
+echo ""
+echo "Persona : $PERSONA"
+
+# ── Null-issue path (longitudinal personas) ───────────────────────────────────
+
+if [ "$ISSUE" = "null" ]; then
+  echo "Issue   : none"
+  echo ""
+  echo "----------------------------------------------------------------"
+  echo "PERSONA"
+  echo ""
+  echo "Read $PERSONA and follow its instructions."
+  echo ""
+  echo "================================================================"
+  exit 0
+fi
+
+# ── Extract issue fields ──────────────────────────────────────────────────────
+
+ISSUE_ID=$(echo "$ISSUE"          | jq -r '.id')
+ISSUE_TYPE=$(echo "$ISSUE"        | jq -r '.issue_type // "unknown"')
+ISSUE_LABELS=$(echo "$ISSUE"      | jq -r '(.labels // []) | join(", ")')
+ISSUE_DESCRIPTION=$(echo "$ISSUE" | jq -r '.description // ""')
+
+echo "Issue   : $ISSUE_ID  (type: $ISSUE_TYPE${ISSUE_LABELS:+, labels: $ISSUE_LABELS})"
+echo ""
+
+# ── Resolve change file ───────────────────────────────────────────────────────
+
+CHANGE_FILE=$(echo "$ISSUE_DESCRIPTION" \
+  | grep -oP 'Change file:\s*\Kchanges/[^\s]+\.md' \
+  | head -1 || true)
+
+UNTAGGED_TASK=false
+if [ "$ISSUE_TYPE" = "task" ] && [ -z "$ISSUE_LABELS" ]; then
+  UNTAGGED_TASK=true
+fi
+
+# Malformed issue check: feature, bug, or untagged task without a change file.
+if [ -z "$CHANGE_FILE" ] && \
+   { [ "$ISSUE_TYPE" = "feature" ] || [ "$ISSUE_TYPE" = "bug" ] || [ "$UNTAGGED_TASK" = "true" ]; }; then
+  NOTE_TEXT="[load-context] Issue $ISSUE_ID is malformed: a change file reference is required for issue type '$ISSUE_TYPE' but none is present in the description. Add 'Change file: changes/<slug>.md' to the description and re-run the session."
+  bd note "$ISSUE_ID" "$NOTE_TEXT"
+
+  echo "================================================================"
+  echo "STOP — MALFORMED ISSUE"
+  echo "================================================================"
+  echo ""
+  echo "Issue $ISSUE_ID ($ISSUE_TYPE) has no change file reference."
+  echo "A 'Change file: changes/<slug>.md' line is required in the description."
+  echo ""
+  echo "A note has been written to the issue. Wait for a human to fix the"
+  echo "description, then re-run the session."
+  echo "================================================================"
+  exit 1
+fi
+
+# ── COMMANDS block ────────────────────────────────────────────────────────────
+
+echo "----------------------------------------------------------------"
+echo "COMMANDS — run each of the following:"
+echo ""
+echo "  bd show $ISSUE_ID --json"
+echo ""
+
+# ── FILES block ───────────────────────────────────────────────────────────────
+
+echo "----------------------------------------------------------------"
+echo "FILES — read each of the following:"
+echo ""
+
+if [ -n "$CHANGE_FILE" ]; then
+  if [ -f "$CHANGE_FILE" ]; then
+    echo "  $CHANGE_FILE"
+  else
+    echo "  [WARNING] $CHANGE_FILE is referenced but does not exist on disk."
+    echo "  You will create it as the first action in your persona protocol,"
+    echo "  before doing any other work."
+  fi
+else
+  # Fallback for issue types that don't require a change file
+  # (e.g. ambiguity, refine, test, review, docs, security, plan).
+  if [ -f "specs.md" ]; then
+    echo "  specs.md"
+  else
+    echo "  [NOTE] No change file reference and no specs.md found."
+    echo "  Proceed using the issue detail from the COMMANDS block as sole context."
+  fi
+fi
+
+echo ""
+
+# ── PERSONA block ─────────────────────────────────────────────────────────────
+
+echo "----------------------------------------------------------------"
+echo "PERSONA"
+echo ""
+echo "Read $PERSONA and follow its instructions."
+echo ""
+echo "================================================================"
+exit 0
+__PERSONA_EOF_XK7Q__
+
 write_file "$PERSONAS_DIR/select-issue.sh" << '__PERSONA_EOF_XK7Q__'
 #!/usr/bin/env bash
 
@@ -3617,7 +3762,8 @@ end
 '
 __PERSONA_EOF_XK7Q__
 
-# Make the selector script executable if it was just created
+# Make the scripts executable if they were just created
+chmod +x "$PERSONAS_DIR/load-context.sh"
 chmod +x "$PERSONAS_DIR/select-issue.sh"
 
 
