@@ -3561,7 +3561,7 @@ echo ""
 # ── Resolve change file ───────────────────────────────────────────────────────
 
 CHANGE_FILE=$(echo "$ISSUE_DESCRIPTION" \
-  | grep -oP 'Change file:\s*\Kchanges/[^\s]+\.md' \
+  | grep -oP 'Change file:\s*\K(?:changes/[^\s]+\.md|multiple)' \
   | head -1 || true)
 
 UNTAGGED_TASK=false
@@ -3602,7 +3602,7 @@ echo "----------------------------------------------------------------"
 echo "FILES — read each of the following:"
 echo ""
 
-if [ -n "$CHANGE_FILE" ]; then
+if [ -n "$CHANGE_FILE" ] && [ "$CHANGE_FILE" != "multiple" ]; then
   if [ -f "$CHANGE_FILE" ]; then
     echo "  $CHANGE_FILE"
   else
