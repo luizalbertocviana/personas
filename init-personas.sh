@@ -271,7 +271,7 @@ Claim the issue now:
 bd update <id> --claim --json
 ```
 
-Your session context — issue details and change file — was loaded before you reached this step. If the change file was missing, create it now before proceeding:
+Your session context — issue details and change file — was loaded before you reached this step. If the change file was missing, create it now before proceeding, unless the reference is `Change file: multiple`. In that case, do not create a change file.
 
 ```
 mkdir -p changes
