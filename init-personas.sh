@@ -2661,8 +2661,8 @@ Collect the full gap picture from the inventory and your reading of in-flight ch
 
 - UNCOVERED entries in `specs-inventory.md`
 - PARTIAL entries (change file exists but scope is insufficient)
-- Change files in `changes/` whose scope issues are all closed but no review issue
-  was created
+- Change files in `changes/` whose scope issues are all closed but no open review issue
+  exists
 - Acceptance criteria never explicitly verified by a Tester (check for `test`-tagged
   closed issues against each slug)
 - Conflicts between current `specs.md` intent and active behaviour described in
@@ -2811,7 +2811,7 @@ bd create "Ambiguity: <topic>" \
   -t task --labels ambiguity -p 1 --json
 ```
 
-For capabilities whose issues are all closed but no review issue exists:
+For capabilities whose issues are all closed but no open review issue exists:
 
 ```
 bd create "Review: <slug>" \
