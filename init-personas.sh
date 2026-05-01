@@ -2098,7 +2098,7 @@ Before escalating any issue to human input, check whether this ambiguity was alr
 escalated previously and returned unresolved. Search closed issues:
 
 ```
-bd list --status closed --labels ambiguity --json
+bd list --status closed --label ambiguity --json
 ```
 
 Scan for issues with the same topic, SPEC-NNN, or change file slug. If a prior
@@ -2592,7 +2592,7 @@ Before filing any new work, scan your own previous session log entries for evide
 of chronic gaps.
 
 ```
-bd list --status closed --labels ambiguity --json
+bd list --status closed --label ambiguity --json
 ```
 
 Also scan `STATE.md` session log for prior `[gap-analyst]` entries.
@@ -2829,7 +2829,7 @@ Do not declare the project complete until every condition below is confirmed:
 - [ ] `bd ready` is empty.
 - [ ] No ambiguity issues were filed in this session.
 - [ ] No previously filed ambiguity issues remain open:
-      `bd list --status open --labels ambiguity --json` returns empty.
+      `bd list --status open --label ambiguity --json` returns empty.
 - [ ] No issues have a last note containing `STATUS: BLOCKED` or
       `STATUS: NEEDS_CONTEXT` — check with `bd list --status closed --json`
       and scan notes for these tokens. A silently stuck issue must be resolved
