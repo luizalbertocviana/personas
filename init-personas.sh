@@ -3372,7 +3372,7 @@ Identify files touched by `refine(` commits in the window. Count touches per fil
 
 **Threshold**: 3 or more `refine(` touches on the same file in 14 days.
 
-For each file crossing the threshold, check whether a `review`-tagged issue is already open or was recently closed (within 14 days) for that file's slug. If not:
+For each source file crossing the threshold, check whether a `review`-tagged issue is already open or was recently closed (within 14 days) for that file's slug. If not:
 
 ```
 bd create "Review: recurring refine hotspot — <file>" \
